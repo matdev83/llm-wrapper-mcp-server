@@ -1,0 +1,3 @@
+pydantic-settings
+pytest-mock
+tiktoken>=0.5.1  # Token counting library
