@@ -42,3 +42,8 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/llm_delegate_mcp_server"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-v", "--import-mode=importlib"]
+pythonpath = ["."]

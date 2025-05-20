@@ -14,6 +14,19 @@ def test_server_initialization():
     assert len(server.tools) == 1
     assert "ask_online" in server.tools
 
+@patch('llm_delegate_mcp_server.stdio_server.logger')
+@patch('sys.argv', ['', '--skip-accounting'])
+@patch('sys.stdin.readline', return_value='')
+def test_skip_accounting_flag(mock_readline, mock_logger):
+    server = StdioServer()
+    server.run()
+    mock_logger.info.assert_any_call("Accounting disabled by command line parameter")
+
+def test_skip_accounting_initialization():
+    server = StdioServer(skip_accounting=True)
+    assert hasattr(server, 'skip_accounting'), "StdioServer should have skip_accounting attribute"
+    assert server.skip_accounting is True
+
 @patch('sys.stdout')
 def test_handle_initialize_request(mock_stdout):
     server = StdioServer()

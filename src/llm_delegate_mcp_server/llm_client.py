@@ -13,6 +13,17 @@ logger = get_logger(__name__)
 logger.setLevel(logging.NOTSET)
 logger.propagate = True
 
+class ApiKeyFilter(logging.Filter):
+    """Filter to redact API keys from log messages"""
+    def __init__(self, api_key: str):
+        super().__init__()
+        self.api_key = api_key
+        
+    def filter(self, record: logging.LogRecord) -> bool:
+        if self.api_key:
+            record.msg = str(record.msg).replace(self.api_key, "***REDACTED***")
+        return True
+
 class LLMClient:
     """Generic LLM API client with OpenRouter compatibility."""
     
@@ -24,14 +35,17 @@ class LLMClient:
     ) -> None:
         """Initialize the client with API key from environment."""
         self.encoder = tiktoken.get_encoding("cl100k_base")
+        self.skip_redaction = False  # Initialize redaction control flag
         logger.debug("LLMClient initialized")
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable not set")
         elif not (self.api_key.startswith('sk-') and len(self.api_key) >= 32):
-            logger.warning("OPENROUTER_API_KEY appears invalid - should start with 'sk-' and be at least 32 characters")
+            raise ValueError("Invalid OPENROUTER_API_KEY format - must start with 'sk-' and be at least 32 characters")
             
-        logger.info(f"OPENROUTER_API_KEY validation passed - starts with 'sk-' and has {len(self.api_key)} characters")
+        # Add API key redaction filter to logger
+        logger.addFilter(ApiKeyFilter(self.api_key))
+        logger.info("API key format validation passed")
         self.base_url = api_base_url or os.getenv("LLM_API_BASE_URL", "https://openrouter.ai/api/v1")
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -51,7 +65,7 @@ class LLMClient:
             logger.warning(f"System prompt file {system_prompt_path} not found. Using empty system prompt.")
             self.system_prompt = ""
         
-    def generate_response(self, prompt: str) -> Dict[str, Any]:
+    def generate_response(self, prompt: str, max_tokens: Optional[int] = None) -> Dict[str, Any]:
         """Generate a response for the given prompt."""
         # Calculate token counts
         system_tokens = len(self.encoder.encode(self.system_prompt))
@@ -70,16 +84,15 @@ class LLMClient:
                     "role": "user",
                     "content": prompt
                 }
-            ]
+            ],
+            "max_tokens": max_tokens
         }
         
         try:
             logger.trace("Sending LLM API request to %s", f"{self.base_url}/chat/completions")
             logger.trace("Request payload: %s", payload)
 
-            # Log redacted headers
-            redacted_headers = {k: "***" if k == "Authorization" else v for k,v in self.headers.items()}
-            logger.trace("Request headers: %s", redacted_headers)
+            logger.trace("Request headers: %s", self.headers)
 
             response = requests.post(
                 f"{self.base_url}/chat/completions",
@@ -94,11 +107,22 @@ class LLMClient:
 
             response.raise_for_status()
             data = response.json()
-
-            response_content = data['choices'][0]['message']['content']
+            
+            if not isinstance(data.get('choices'), list) or len(data['choices']) == 0:
+                raise RuntimeError("Invalid API response format: Missing choices array")
+                
+            first_choice = data['choices'][0]
+            if 'message' not in first_choice or 'content' not in first_choice['message']:
+                raise RuntimeError("Invalid API response format: Missing message content")
+                
+            response_content = first_choice['message']['content']
+            
+            # Redact API key based on skip_redaction flag
+            response_content = self.redact_api_key(response_content)
+            
             response_tokens = len(self.encoder.encode(response_content))
             logger.debug("Response token count: %d", response_tokens)
-            
+
             # Log accounting information
             logger.debug(
                 "API usage - Total: %s, Prompt: %s, Completion: %s, Cost: %s",
@@ -120,6 +144,25 @@ class LLMClient:
                 }
             }
 
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                retry_after = e.response.headers.get('Retry-After', 60)
+                logger.error("Rate limited - retry after %s seconds", retry_after)
+                raise RuntimeError(f"API rate limit exceeded: Retry after {retry_after} seconds") from e
+            logger.error("API HTTP error: %d %s", e.response.status_code, e.response.reason)
+            raise RuntimeError(f"API HTTP error: {e.response.status_code} {e.response.reason}") from e
         except requests.exceptions.RequestException as e:
             logger.error("API request failed: %s", str(e))
-            raise RuntimeError(f"LLM API error: {str(e)}") from e
+            raise RuntimeError(f"Network error: {str(e)}") from e
+        except KeyError as e:
+            logger.error("Malformed API response: %s", str(e))
+            raise RuntimeError(f"Unexpected API response format: {str(e)}") from e
+
+    def redact_api_key(self, content: str) -> str:
+        """Redact actual API key value from content."""
+        if self.skip_redaction:
+            return content
+        if self.api_key and self.api_key in content:
+            logger.warning("Redacting API key from response content")
+            return content.replace(self.api_key, "(API key redacted due to security reasons)")
+        return content

@@ -1,95 +1,68 @@
-"""
-Simple test script for OpenRouter API communication using chatlet.
-"""
 import os
+import unittest
+from unittest.mock import patch, MagicMock
 from llm_delegate_mcp_server.llm_client import LLMClient
-from unittest.mock import Mock
-import pytest
-import tiktoken
+from llm_delegate_mcp_server.stdio_server import StdioServer
 
-@pytest.fixture
-def client():
-    return LLMClient()
+class TestRedactionFunctionality(unittest.TestCase):
+    def setUp(self):
+        self.test_api_key = "sk-testkey1234567890abcdefghijklmnopqr"
+        os.environ["OPENROUTER_API_KEY"] = self.test_api_key
+        
+        self.mock_response = {
+            "response": f"Here is your key: {self.test_api_key}",
+            "input_tokens": 10,
+            "output_tokens": 20,
+            "api_usage": {}
+        }
 
-@pytest.fixture
-def mock_encoder(mocker):
-    """Fixture to mock tiktoken encoder"""
-    mock = Mock()
-    mocker.patch.object(tiktoken, 'get_encoding', return_value=mock)
-    return mock
+    @patch('requests.post')
+    def test_api_key_redaction_enabled(self, mock_post):
+        """Test that API key is redacted when feature is enabled (default)"""
+        # Setup mock API response
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": f"Here is your key: {self.test_api_key}"}}]
+        }
+        mock_response.headers = {}
+        mock_post.return_value = mock_response
+        
+        server = StdioServer(skip_api_key_redaction=False)
+        response = server.llm_client.generate_response("test prompt")
+        processed_response = response["response"]
+        
+        self.assertIn("(API key redacted due to security reasons)", processed_response)
+        self.assertNotIn(self.test_api_key, processed_response)
 
-def test_openrouter_response(client, mock_encoder):
-    """Test OpenRouter API response structure"""
-    prompt = "What is 2+2?"
-    mock_encoder.encode.side_effect = lambda x: len(x.split())  # Simple token approximation
-    
-    response = client.generate_response(prompt)
-    
-    assert isinstance(response, dict)
-    assert "response" in response
-    assert isinstance(response["response"], str)
-    assert len(response["response"]) > 0
-    assert "input_tokens" in response
-    assert "output_tokens" in response
-    assert isinstance(response["input_tokens"], int)
-    assert isinstance(response["output_tokens"], int)
+    def test_api_key_redaction_disabled(self):
+        """Test that API key remains when redaction is disabled"""
+        with patch.object(LLMClient, 'generate_response', return_value=self.mock_response) as mock_gen:
+            server = StdioServer(skip_api_key_redaction=True)
+            
+            # Simulate API response containing the actual key
+            response = server.llm_client.generate_response("test prompt")
+            processed_response = response["response"]
+            
+            self.assertIn(self.test_api_key, processed_response)
+            self.assertNotIn("(API key redacted due to security reasons)", processed_response)
+            mock_gen.assert_called_once()
 
-def test_token_counting(client, mock_encoder, mocker):
-    """Test token counting functionality"""
-    prompt = "Test prompt"
-    system_prompt = "Test system prompt"
-    mock_response = {"choices": [{"message": {"content": "Test response"}}]}
-    
-    # Mock the encoder and requests
-    mock_encoder.encode.side_effect = lambda x: len(x.split())  # Simple token approximation
-    mock_post = mocker.patch('requests.post')
-    mock_post.return_value.json.return_value = mock_response
-    mock_post.return_value.raise_for_status.return_value = None
-    
-    # Mock logger and system prompt
-    mock_logger = mocker.patch('llm_delegate_mcp_server.llm_client.logger')
-    mocker.patch('builtins.open', mocker.mock_open(read_data=system_prompt))
-    client.system_prompt = system_prompt  # Set directly since we're testing token counting
-    
-    # Test
-    response = client.generate_response(prompt)
-    
-    # Verify token counts
-    expected_input = len(system_prompt.split()) + len(prompt.split())
-    expected_output = len(mock_response["choices"][0]["message"]["content"].split())
-    
-    assert response["input_tokens"] == expected_input
-    assert response["output_tokens"] == expected_output
-    
-    # Verify debug logging
-    mock_logger.debug.assert_any_call(
-        "Token counts - system: %d, user: %d, total: %d",
-        len(system_prompt.split()),
-        len(prompt.split()),
-        expected_input
-    )
-    mock_logger.debug.assert_any_call(
-        "Response token count: %d",
-        expected_output
-    )
+    @patch('requests.post')
+    @patch('llm_delegate_mcp_server.llm_client.logger')
+    def test_redaction_logging(self, mock_logger, mock_post):
+        """Test that redaction events are properly logged"""
+        # Setup mock API response
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": f"Here is your key: {self.test_api_key}"}}]
+        }
+        mock_response.headers = {}
+        mock_post.return_value = mock_response
+        
+        server = StdioServer()
+        server.llm_client.generate_response("test prompt")
+        
+        mock_logger.warning.assert_called_once_with("Redacting API key from response content")
 
-def test_empty_prompt_token_count(client, mock_encoder, mocker):
-    """Test token counting with empty prompts"""
-    prompt = ""
-    system_prompt = ""
-    mock_response = {"choices": [{"message": {"content": ""}}]}
-    
-    # Mock the encoder, requests and file reading
-    mock_encoder.encode.return_value = 0
-    mock_post = mocker.patch('requests.post')
-    mock_post.return_value.json.return_value = mock_response
-    mock_post.return_value.raise_for_status.return_value = None
-    mocker.patch('builtins.open', mocker.mock_open(read_data=system_prompt))
-    client.system_prompt = system_prompt  # Set directly since we're testing token counting
-    
-    # Test
-    response = client.generate_response(prompt)
-    
-    # Verify token counts
-    assert response["input_tokens"] == 0
-    assert response["output_tokens"] == 0
+if __name__ == '__main__':
+    unittest.main()

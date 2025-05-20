@@ -21,7 +21,11 @@ class StdioServer:
         system_prompt_path: str = "config/prompts/system.txt",
         model: str = "perplexity/llama-3.1-sonar-small-128k-online",
         llm_api_base_url: Optional[str] = None,
-        max_user_prompt_tokens: int = 100
+        max_user_prompt_tokens: int = 100,
+        skip_outbound_key_checks: bool = False,
+        skip_api_key_redaction: bool = False,
+        skip_accounting: bool = False,
+        max_tokens: Optional[int] = None
     ) -> None:
         """Initialize the server with configuration options."""
         logger.debug("StdioServer initialized")
@@ -31,6 +35,10 @@ class StdioServer:
             api_base_url=llm_api_base_url
         )
         self.max_user_prompt_tokens = max_user_prompt_tokens
+        self.skip_outbound_key_checks = skip_outbound_key_checks
+        self.skip_accounting = skip_accounting
+        self.max_tokens = max_tokens
+        self.openrouter_api_key = os.environ.get("OPENROUTER_API_KEY")
         self.tools = {
             "ask_online": {
                 "description": "Ask a natural language question for an online search assistant to retrieve information or perform fact checking.",
@@ -123,6 +131,20 @@ class StdioServer:
                         })
                         return
                     
+                    # Check for API key leak in prompt
+                    if not self.skip_outbound_key_checks and self.openrouter_api_key and self.openrouter_api_key in prompt:
+                        logger.warning("API key leak detected in prompt", extra={'request_id': request_id})
+                        self.send_response({
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "error": {
+                                "code": -32602,
+                                "message": "Security violation",
+                                "data": "Prompt contains sensitive API key - request rejected"
+                            }
+                        })
+                        return  # Make sure to return immediately after sending error response
+                    
                     # Check prompt token length
                     prompt_tokens = len(self.llm_client.encoder.encode(prompt))
                     logger.debug("Prompt token count: %d/%d", prompt_tokens, self.max_user_prompt_tokens, extra={'request_id': request_id})
@@ -177,9 +199,9 @@ class StdioServer:
                                 model=model,
                                 api_base_url=self.llm_client.base_url
                             )
-                            response = temp_client.generate_response(prompt=prompt)
+                            response = temp_client.generate_response(prompt=prompt, max_tokens=self.max_tokens)
                         else:
-                            response = self.llm_client.generate_response(prompt=prompt)
+                            response = self.llm_client.generate_response(prompt=prompt, max_tokens=self.max_tokens)
                         logger.debug("Received response from LLMClient: %s", response, extra={'request_id': request_id})
 
                         # Construct the response in the format observed from fetch-mcp
@@ -267,6 +289,18 @@ class StdioServer:
     
     def run(self) -> None:
         """Run the server, reading from stdin and writing to stdout."""
+        # Parse command line arguments
+        skip_outbound_key_checks = False
+        skip_accounting = False
+        if "--skip-outbound-key-leaks" in sys.argv:
+            skip_outbound_key_checks = True
+            logger.info("Outbound key leak checks disabled by command line parameter")
+        if "--skip-accounting" in sys.argv:
+            skip_accounting = True
+            logger.info("Accounting disabled by command line parameter")
+            
+        self.skip_outbound_key_checks = skip_outbound_key_checks
+        self.skip_accounting = skip_accounting
         logger.debug("StdioServer run method started. Sending initial capabilities.")
         # Send initial handshake/capabilities message on startup
         self.send_response({

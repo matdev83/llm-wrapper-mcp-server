@@ -65,6 +65,16 @@ def main() -> None:
         default=100,
         help="Maximum allowed tokens in user prompt (default: 100)"
     )
+    parser.add_argument(
+        "--skip-accounting",
+        action="store_true",
+        help="Skip accounting for LLM usage"
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        help="Maximum number of tokens to generate in the LLM response"
+    )
 
     # Parse all args again, passing the remaining args from the first parse
     args = parser.parse_args(_)
@@ -111,7 +121,9 @@ def main() -> None:
     server = StdioServer(
         system_prompt_path=args.system_prompt_file,
         model=args.model,
-        llm_api_base_url=args.llm_api_base_url
+        llm_api_base_url=args.llm_api_base_url,
+        skip_accounting=args.skip_accounting,
+        max_tokens=args.max_tokens
     )
     server.run()
 
