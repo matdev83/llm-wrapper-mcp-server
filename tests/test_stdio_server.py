@@ -1,7 +1,7 @@
 import json
 import pytest
 import tiktoken
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, Mock
 from llm_delegate_mcp_server.stdio_server import StdioServer
 
 # Helper to create prompts of specific token lengths
@@ -58,8 +58,26 @@ def test_handle_invalid_request(mock_stdout):
     assert "error" in response
     assert response["error"]["code"] == -32601
 
+@patch('llm_delegate_mcp_server.stdio_server.LLMClient')
 @patch('sys.stdout')
-def test_prompt_under_limit(mock_stdout):
+def test_prompt_under_limit(mock_stdout, MockLLMClient):
+    # Configure the mock LLMClient instance
+    mock_llm_client_instance = MockLLMClient.return_value
+    mock_llm_client_instance.generate_response.return_value = {
+        "response": "Mocked response",
+        "input_tokens": 50,
+        "output_tokens": 10,
+        "api_usage": {
+            "total_tokens": 60,
+            "prompt_tokens": 50,
+            "completion_tokens": 10,
+            "total_cost": 0.001
+        }
+    }
+    # Mock the encoder attribute that StdioServer tries to access
+    mock_llm_client_instance.encoder = Mock()
+    mock_llm_client_instance.encoder.encode.return_value = [] # Return empty list for token counting
+
     server = StdioServer(max_user_prompt_tokens=100)
     prompt = make_prompt(50)  # Well under limit
     server.handle_request({
@@ -75,9 +93,28 @@ def test_prompt_under_limit(mock_stdout):
     written = mock_stdout.write.call_args[0][0]
     response = json.loads(written)
     assert "error" not in response
+    mock_llm_client_instance.generate_response.assert_called_once()
 
+@patch('llm_delegate_mcp_server.stdio_server.LLMClient')
 @patch('sys.stdout')
-def test_prompt_at_limit(mock_stdout):
+def test_prompt_at_limit(mock_stdout, MockLLMClient):
+    # Configure the mock LLMClient instance
+    mock_llm_client_instance = MockLLMClient.return_value
+    mock_llm_client_instance.generate_response.return_value = {
+        "response": "Mocked response",
+        "input_tokens": 100,
+        "output_tokens": 20,
+        "api_usage": {
+            "total_tokens": 120,
+            "prompt_tokens": 100,
+            "completion_tokens": 20,
+            "total_cost": 0.002
+        }
+    }
+    # Mock the encoder attribute that StdioServer tries to access
+    mock_llm_client_instance.encoder = Mock()
+    mock_llm_client_instance.encoder.encode.return_value = [] # Return empty list for token counting
+
     server = StdioServer(max_user_prompt_tokens=100)
     prompt = make_prompt(100)  # Exactly at limit
     server.handle_request({
@@ -93,6 +130,7 @@ def test_prompt_at_limit(mock_stdout):
     written = mock_stdout.write.call_args[0][0]
     response = json.loads(written)
     assert "error" not in response
+    mock_llm_client_instance.generate_response.assert_called_once()
 
 @patch('sys.stdout')
 def test_prompt_over_limit(mock_stdout):

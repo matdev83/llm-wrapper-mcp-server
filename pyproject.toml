@@ -47,3 +47,4 @@ packages = ["src/llm_delegate_mcp_server"]
 testpaths = ["tests"]
 addopts = ["-v", "--import-mode=importlib"]
 pythonpath = ["."]
+asyncio_default_fixture_loop_scope = "function"

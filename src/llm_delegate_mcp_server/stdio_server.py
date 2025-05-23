@@ -64,12 +64,8 @@ class StdioServer:
         try:
             response_str = json.dumps(response) + "\n"
             request_id = response.get('id', 'N/A')
-            logger.debug("Attempting to write response to stdout (length %d): %s", len(response_str), response_str.strip(), extra={'request_id': request_id})
-            # Log the exact string being written to stdout
-            logger.debug("Writing to stdout: %s", response_str.strip(), extra={'request_id': request_id})
             sys.stdout.write(response_str)
             sys.stdout.flush()
-            logger.debug("Response successfully sent and flushed to stdout.", extra={'request_id': request_id})
         except Exception as e:
             logger.error("Error sending response to stdout: %s", str(e), extra={'request_id': response.get('id', 'N/A')})
             raise
@@ -160,11 +156,16 @@ class StdioServer:
                         })
                         return
                     
-                    # Validate model name if specified
+                    # Get the optional model parameter
                     model = args.get("model")
-                    if model:
-                        model = model.strip()
-                        if len(model) < 2:
+                    
+                    # Variable to hold the model to use for generation
+                    model_to_use = None
+
+                    # Validate model name if specified
+                    if model is not None: # Check if model argument was provided at all
+                        stripped_model = model.strip() # Strip whitespace before validation
+                        if len(stripped_model) < 2:
                             self.send_response({
                                 "jsonrpc": "2.0",
                                 "id": request_id,
@@ -175,7 +176,7 @@ class StdioServer:
                                 }
                             })
                             return
-                        if '/' not in model:
+                        if '/' not in stripped_model:
                             self.send_response({
                                 "jsonrpc": "2.0",
                                 "id": request_id,
@@ -186,23 +187,36 @@ class StdioServer:
                                 }
                             })
                             return
+                        
+                        parts = stripped_model.split('/')
+                        if len(parts) != 2 or not all(parts): # Check if there are exactly two parts and both are non-empty
+                            self.send_response({
+                                "jsonrpc": "2.0",
+                                "id": request_id,
+                                "error": {
+                                    "code": -32602,
+                                    "message": "Invalid model specification",
+                                    "data": "Model name must contain a provider and a model separated by a single '/'"
+                                }
+                            })
+                            return
+                        
+                        # If model was provided and passed validation, set it for use
+                        model_to_use = stripped_model
                     
                     try:
-                        logger.debug("Calling LLMClient.generate_response with prompt: %s", prompt, extra={'request_id': request_id})
-                        # Get the optional model parameter
-                        model = args.get("model")
-                        if model:
-                            logger.debug("Using custom model: %s", model, extra={'request_id': request_id})
+                        # Determine which LLMClient to use
+                        client_to_use = self.llm_client
+                        if model_to_use: # If a specific, validated model was determined
                             # Create a temporary LLM client with the specified model
                             temp_client = LLMClient(
                                 system_prompt_path=self.llm_client.system_prompt,
-                                model=model,
+                                model=model_to_use,
                                 api_base_url=self.llm_client.base_url
                             )
-                            response = temp_client.generate_response(prompt=prompt, max_tokens=self.max_tokens)
-                        else:
-                            response = self.llm_client.generate_response(prompt=prompt, max_tokens=self.max_tokens)
-                        logger.debug("Received response from LLMClient: %s", response, extra={'request_id': request_id})
+                            client_to_use = temp_client
+                        
+                        response = client_to_use.generate_response(prompt=prompt, max_tokens=self.max_tokens)
 
                         # Construct the response in the format observed from fetch-mcp
                         mcp_response = {
@@ -230,9 +244,9 @@ class StdioServer:
                             "error": {
                                 "code": -32000,
                                 "message": f"Internal error: {str(e)}",
-                                "data": tb
-                            }
-                        })
+                            "data": str(tb) # Ensure data is always a string
+                        }
+                    })
                 else:
                     logger.warning("Tool not found: %s", name, extra={'request_id': request_id})
                     self.send_response({
@@ -273,8 +287,8 @@ class StdioServer:
                         "code": -32601,
                         "message": "Method not found",
                         "data": f"Method '{method}' not found"
-                    }
-                })
+                        }
+                    })
         except Exception as e:
             logger.error("Error handling request: %s", str(e), extra={'request_id': request.get('id', 'N/A')})
             self.send_response({
@@ -283,7 +297,7 @@ class StdioServer:
                 "error": {
                     "code": -32000,
                     "message": "Internal error",
-                    "data": str(e)
+                    "data": str(e) # Ensure data is always a string
                 }
             })
     
@@ -357,7 +371,7 @@ class StdioServer:
                         "error": {
                             "code": -32000,
                             "message": "Internal error",
-                            "data": str(e)
+                            "data": str(e) # Ensure data is always a string
                         }
                     })
         except Exception as e:

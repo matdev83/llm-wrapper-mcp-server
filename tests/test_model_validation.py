@@ -2,7 +2,7 @@ import pytest
 import logging
 import os
 import json
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from llm_delegate_mcp_server.__main__ import main
 
 def test_valid_model_selection(tmp_path, caplog):
@@ -14,7 +14,7 @@ def test_valid_model_selection(tmp_path, caplog):
         'server.py',
         '--allowed-models-file', str(model_file),
         '--model', 'perplexity/llama-3.1-sonar-small-128k-online'
-    ]), patch('llm_delegate_mcp_server.__main__.StdioServer.run') as mock_run:
+    ]), patch('llm_delegate_mcp_server.stdio_server.StdioServer.run') as mock_run:
         mock_run.side_effect = lambda: None  # Prevent actual server startup
         main()
     
@@ -50,18 +50,43 @@ def test_empty_model_file(tmp_path, caplog):
     assert excinfo.value.code == 1
     assert "Allowed models file is empty" in caplog.text
 
-def test_invalid_model_formatting(caplog):
+def test_invalid_model_formatting(mocker, caplog):
     """Test various invalid model name formats"""
     test_cases = [
         ("", "Model name must be at least 2 characters"),
         ("a", "Model name must be at least 2 characters"),
         ("noslash", "Model name must contain a '/' separator"),
         ("  ", "Model name must be at least 2 characters"),
-        ("/missingprovider", "Model name must contain a '/' separator"),
-        ("missingmodel/", "Model name must contain a '/' separator")
+        ("/missingprovider", "Model name must contain a provider and a model separated by a single '/'"),
+        ("missingmodel/", "Model name must contain a provider and a model separated by a single '/'")
     ]
     
     for model, expected_error in test_cases:
+        # Patch LLMClient at the module level to control its instantiation
+        with patch('llm_delegate_mcp_server.stdio_server.LLMClient') as MockLLMClient:
+            # Configure the side_effect for MockLLMClient to return a properly configured mock
+            def side_effect_llm_client(*args, **kwargs):
+                mock_instance = mocker.Mock()
+                # Set attributes based on kwargs passed to LLMClient constructor
+                mock_instance.system_prompt = kwargs.get('system_prompt_path', '')
+                mock_instance.model = kwargs.get('model', 'default/model')
+                mock_instance.base_url = kwargs.get('api_base_url', "https://mocked.api") # Crucial for this error
+                
+                mock_instance.encoder = mocker.Mock()
+                mock_instance.encoder.encode.return_value = []
+                mock_instance.generate_response.return_value = {"response": "mocked response content"}
+                return mock_instance
+
+            MockLLMClient.side_effect = side_effect_llm_client
+
+            # Initialize server (this will now use the mocked LLMClient)
+            from llm_delegate_mcp_server.stdio_server import StdioServer
+            server = StdioServer()
+
+            # Get the initial mocked LLMClient instance that was created during server initialization
+            # This is MockLLMClient.side_effect() called once.
+            mock_llm_client_instance = MockLLMClient.call_args.return_value
+        
         # Mock a tools/call request with invalid model
         request = {
             "jsonrpc": "2.0",
@@ -75,10 +100,6 @@ def test_invalid_model_formatting(caplog):
                 }
             }
         }
-        
-        # Initialize server without allowed models list
-        from llm_delegate_mcp_server.stdio_server import StdioServer
-        server = StdioServer()
         
         # Capture stdout
         from io import StringIO
@@ -96,6 +117,9 @@ def test_invalid_model_formatting(caplog):
         assert response_data["error"]["code"] == -32602
         assert response_data["error"]["message"] == "Invalid model specification"
         assert expected_error in response_data["error"]["data"]
+        # Ensure generate_response was NOT called for invalid model formats
+        mock_llm_client_instance.generate_response.assert_not_called()
+        mock_llm_client_instance.generate_response.reset_mock() # Reset mock for next iteration
 
 def test_invalid_model_selection(tmp_path, caplog):
     """Test invalid model not in allowed list"""

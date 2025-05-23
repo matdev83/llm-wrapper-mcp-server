@@ -7,6 +7,8 @@ import requests
 import tiktoken
 from typing import Dict, Any, Optional
 from .logger import get_logger
+from llm_accounting import LLMAccounting
+from llm_accounting.backends.sqlite import SQLiteBackend
 
 logger = get_logger(__name__)
 # Keep NOTSET to inherit level from root logger
@@ -38,6 +40,7 @@ class LLMClient:
         self.skip_redaction = False  # Initialize redaction control flag
         logger.debug("LLMClient initialized")
         self.api_key = os.getenv("OPENROUTER_API_KEY")
+        self.llm_tracker = LLMAccounting(backend=SQLiteBackend(db_path="data/accounting.sqlite"))
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable not set")
         elif not (self.api_key.startswith('sk-') and len(self.api_key) >= 32):
@@ -131,6 +134,19 @@ class LLMClient:
                 response.headers.get("X-Completion-Tokens"),
                 response.headers.get("X-Total-Cost")
             )
+
+            # Record usage with llm-accounting
+            try:
+                self.llm_tracker.track_usage(
+                    model=self.model,
+                    prompt_tokens=int(response.headers.get("X-Prompt-Tokens", 0)),
+                    completion_tokens=int(response.headers.get("X-Completion-Tokens", 0)),
+                    total_tokens=int(response.headers.get("X-Total-Tokens", 0)),
+                    cost=float(response.headers.get("X-Total-Cost", 0.0)),
+                    caller_name="LLMClient.generate_response"
+                )
+            except Exception as e:
+                logger.error(f"Failed to track LLM usage: {e}")
             
             return {
                 "response": response_content,
