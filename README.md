@@ -1,5 +1,7 @@
 # LLM Wrapper MCP Server
 
+> "Allow any MCP-capable LLM agent to communicate with or delegate tasks to any other LLM available through the OpenRouter.ai API."
+
 A Model Context Protocol (MCP) server wrapper designed to facilitate seamless interaction with various Large Language Models (LLMs) through a standardized interface. This project enables developers to integrate LLM capabilities into their applications by providing a robust and flexible server that handles LLM calls, tool execution, and result processing.
 
 ## Features
