@@ -126,3 +126,6 @@ Thumbs.db
 .clinerules/
 data/
 src/online_llm_server/
+build.bat
+release_orchestrator.py
+version_manager.py

@@ -11,6 +11,7 @@ A Model Context Protocol (MCP) server wrapper designed to facilitate seamless in
 - Supports advanced features like tool calls and results through the MCP protocol.
 - Configurable to use various LLM providers (e.g., OpenRouter, local models).
 - Designed for extensibility, allowing easy integration of new LLM backends.
+- Integrates with `llm-accounting` for robust logging, rate limiting, and audit functionalities, enabling monitoring of remote LLM usage, inference costs, and inspection of queries/responses for debugging or legal purposes.
 
 ## Installation
 
