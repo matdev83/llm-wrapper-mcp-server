@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "llm-delegate-mcp-server"
+name = "llm-wrapper-mcp-server"
 version = "0.1.0"
 description = "MCP server for online LLM queries via OpenRouter"
 authors = [
@@ -15,14 +15,18 @@ dependencies = [
     "pydantic>=2.4.2",
     "pydantic-settings>=2.0.0",
     "httpx>=0.25.0",
-    "python-dotenv>=1.0.0"
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+    "tiktoken>=0.6.0",
+    "llm_accounting>=0.1.0",
+    "alembic>=1.13.0"
 ]
 requires-python = ">=3.8"
 readme = "README.md"
 license = {text = "MIT"}
 
 [project.scripts]
-cli = "llm_delegate_mcp_server.__main__:main"
+cli = "llm_wrapper_mcp_server.__main__:main"
 
 [project.optional-dependencies]
 dev = [
@@ -30,6 +34,7 @@ dev = [
     "black>=23.9.1",
     "isort>=5.12.0",
     "mypy>=1.5.1",
+    "pytest-mock>=3.12.0",
 ]
 
 [tool.black]
@@ -44,10 +49,9 @@ multi_line_output = 3
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/llm_delegate_mcp_server"]
+packages = ["src/llm_wrapper_mcp_server"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["-v", "--import-mode=importlib"]
 pythonpath = ["."]
-asyncio_default_fixture_loop_scope = "function"

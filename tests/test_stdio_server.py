@@ -2,7 +2,7 @@ import json
 import pytest
 import tiktoken
 from unittest.mock import patch, mock_open, Mock
-from llm_delegate_mcp_server.stdio_server import StdioServer
+from llm_wrapper_mcp_server.stdio_server import StdioServer
 
 # Helper to create prompts of specific token lengths
 def make_prompt(token_length: int) -> str:
@@ -14,7 +14,7 @@ def test_server_initialization():
     assert len(server.tools) == 1
     assert "ask_online" in server.tools
 
-@patch('llm_delegate_mcp_server.stdio_server.logger')
+@patch('llm_wrapper_mcp_server.stdio_server.logger')
 @patch('sys.argv', ['', '--skip-accounting'])
 @patch('sys.stdin.readline', return_value='')
 def test_skip_accounting_flag(mock_readline, mock_logger):
@@ -41,7 +41,7 @@ def test_handle_initialize_request(mock_stdout):
     response = json.loads(written)
     
     assert "result" in response
-    assert response["result"]["serverInfo"]["name"] == "llm-delegate-mcp-server"
+    assert response["result"]["serverInfo"]["name"] == "llm-wrapper-mcp-server"
 
 @patch('sys.stdout')
 def test_handle_invalid_request(mock_stdout):
@@ -58,7 +58,7 @@ def test_handle_invalid_request(mock_stdout):
     assert "error" in response
     assert response["error"]["code"] == -32601
 
-@patch('llm_delegate_mcp_server.stdio_server.LLMClient')
+@patch('llm_wrapper_mcp_server.stdio_server.LLMClient')
 @patch('sys.stdout')
 def test_prompt_under_limit(mock_stdout, MockLLMClient):
     # Configure the mock LLMClient instance
@@ -95,7 +95,7 @@ def test_prompt_under_limit(mock_stdout, MockLLMClient):
     assert "error" not in response
     mock_llm_client_instance.generate_response.assert_called_once()
 
-@patch('llm_delegate_mcp_server.stdio_server.LLMClient')
+@patch('llm_wrapper_mcp_server.stdio_server.LLMClient')
 @patch('sys.stdout')
 def test_prompt_at_limit(mock_stdout, MockLLMClient):
     # Configure the mock LLMClient instance

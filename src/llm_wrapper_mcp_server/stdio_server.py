@@ -10,7 +10,7 @@ from .logger import get_logger
 
 logger = get_logger(__name__)
 
-from llm_delegate_mcp_server.llm_client import LLMClient
+from llm_wrapper_mcp_server.llm_client import LLMClient
 
 
 class StdioServer:
@@ -84,7 +84,7 @@ class StdioServer:
                     "result": {
                         "protocolVersion": "2024-11-05",
                         "serverInfo": {
-                            "name": "llm-delegate-mcp-server",
+                            "name": "llm-wrapper-mcp-server",
                             "version": "0.1.0",
                             "description": "Generic LLM API MCP server"
                         },
@@ -323,7 +323,7 @@ class StdioServer:
             "result": {
                 "protocolVersion": "2024-11-05",
                 "serverInfo": {
-                            "name": "llm-delegate-mcp-server",
+                            "name": "llm-wrapper-mcp-server",
                     "version": "0.1.0",
                     "description": "Generic LLM API MCP server"
                 },

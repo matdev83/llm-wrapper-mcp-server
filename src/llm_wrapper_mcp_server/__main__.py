@@ -99,7 +99,7 @@ def main() -> None:
     logger = logging.getLogger(__name__)
     logger.debug("Logging is configured and this is a DEBUG test message.")
 
-    from llm_delegate_mcp_server.stdio_server import StdioServer
+    from llm_wrapper_mcp_server.stdio_server import StdioServer
 
     # Validate allowed models if specified
     if args.allowed_models_file:
@@ -127,6 +127,9 @@ def main() -> None:
     )
     server.run()
 
+# Define logger outside main for global access in exception handler
+logger = logging.getLogger(__name__)
+
 if __name__ == "__main__":
     try:
         main()
@@ -138,7 +141,6 @@ if __name__ == "__main__":
             format="%(asctime)s - %(levelname)s - %(message)s",
             filemode="a"
         )
-        logger = logging.getLogger(__name__)
         logger.exception("Unhandled exception in MCP server")
         # No sys.exit(1) here, let the exception propagate if needed
         raise

@@ -3,7 +3,7 @@ import logging
 import os
 import json
 from unittest.mock import patch, Mock
-from llm_delegate_mcp_server.__main__ import main
+from llm_wrapper_mcp_server.__main__ import main
 
 def test_valid_model_selection(tmp_path, caplog):
     """Test valid model selection from allowed list"""
@@ -14,7 +14,7 @@ def test_valid_model_selection(tmp_path, caplog):
         'server.py',
         '--allowed-models-file', str(model_file),
         '--model', 'perplexity/llama-3.1-sonar-small-128k-online'
-    ]), patch('llm_delegate_mcp_server.stdio_server.StdioServer.run') as mock_run:
+    ]), patch('llm_wrapper_mcp_server.stdio_server.StdioServer.run') as mock_run:
         mock_run.side_effect = lambda: None  # Prevent actual server startup
         main()
     
@@ -63,7 +63,7 @@ def test_invalid_model_formatting(mocker, caplog):
     
     for model, expected_error in test_cases:
         # Patch LLMClient at the module level to control its instantiation
-        with patch('llm_delegate_mcp_server.stdio_server.LLMClient') as MockLLMClient:
+        with patch('llm_wrapper_mcp_server.stdio_server.LLMClient') as MockLLMClient:
             # Configure the side_effect for MockLLMClient to return a properly configured mock
             def side_effect_llm_client(*args, **kwargs):
                 mock_instance = mocker.Mock()
@@ -80,7 +80,7 @@ def test_invalid_model_formatting(mocker, caplog):
             MockLLMClient.side_effect = side_effect_llm_client
 
             # Initialize server (this will now use the mocked LLMClient)
-            from llm_delegate_mcp_server.stdio_server import StdioServer
+            from llm_wrapper_mcp_server.stdio_server import StdioServer
             server = StdioServer()
 
             # Get the initial mocked LLMClient instance that was created during server initialization

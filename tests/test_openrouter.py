@@ -1,8 +1,8 @@
 import os
 import unittest
 from unittest.mock import patch, MagicMock
-from llm_delegate_mcp_server.llm_client import LLMClient
-from llm_delegate_mcp_server.stdio_server import StdioServer
+from llm_wrapper_mcp_server.llm_client import LLMClient
+from llm_wrapper_mcp_server.stdio_server import StdioServer
 
 class TestRedactionFunctionality(unittest.TestCase):
     def setUp(self):
@@ -48,7 +48,7 @@ class TestRedactionFunctionality(unittest.TestCase):
             mock_gen.assert_called_once()
 
     @patch('requests.post')
-    @patch('llm_delegate_mcp_server.llm_client.logger')
+    @patch('llm_wrapper_mcp_server.llm_client.logger')
     def test_redaction_logging(self, mock_logger, mock_post):
         """Test that redaction events are properly logged"""
         # Setup mock API response

@@ -2,7 +2,7 @@ import os
 import pytest
 import requests
 from unittest.mock import patch, Mock
-from src.llm_delegate_mcp_server.llm_client import LLMClient, logger, ApiKeyFilter
+from src.llm_wrapper_mcp_server.llm_client import LLMClient, logger, ApiKeyFilter
 
 @pytest.fixture
 def mock_env(monkeypatch):
