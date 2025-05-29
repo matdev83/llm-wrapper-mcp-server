@@ -21,6 +21,9 @@ requires-python = ">=3.8"
 readme = "README.md"
 license = {text = "MIT"}
 
+[project.scripts]
+cli = "llm_delegate_mcp_server.__main__:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4.0",
