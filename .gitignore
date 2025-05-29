@@ -124,6 +124,7 @@ Thumbs.db
 
 # Custom
 .clinerules/
+.clineignore
 data/
 src/online_llm_server/
 build.bat

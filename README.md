@@ -13,6 +13,27 @@ A Model Context Protocol (MCP) server wrapper designed to facilitate seamless in
 - Designed for extensibility, allowing easy integration of new LLM backends.
 - Integrates with `llm-accounting` for robust logging, rate limiting, and audit functionalities, enabling monitoring of remote LLM usage, inference costs, and inspection of queries/responses for debugging or legal purposes.
 
+## Dependencies
+
+This project relies on the following key dependencies:
+
+### Core Dependencies:
+*   `fastapi`: A modern, fast (high-performance) web framework for building APIs with Python 3.7+.
+*   `uvicorn`: An ASGI server, used to run FastAPI applications.
+*   `pydantic`: Data validation and settings management using Python type hints.
+*   `pydantic-settings`: Pydantic's settings management for environment variables and configuration.
+*   `python-dotenv`: Reads key-value pairs from a `.env` file and sets them as environment variables.
+*   `requests`: An elegant and simple HTTP library for Python.
+*   `tiktoken`: A fast BPE tokeniser for use with OpenAI's models.
+*   `llm_accounting`: For robust logging, rate limiting, and audit functionalities, enabling monitoring of remote LLM usage, inference costs, and inspection of queries/responses for debugging or legal purposes.
+
+### Development Dependencies:
+*   `pytest`: A mature full-featured Python testing framework.
+*   `black`: An uncompromising Python code formatter.
+*   `isort`: A Python utility / library to sort imports alphabetically, and automatically separate into sections and by type.
+*   `mypy`: An optional static type checker for Python.
+*   `pytest-mock`: A pytest plugin that provides a `mocker` fixture for easier mocking.
+
 ## Installation
 
 1. Create and activate a virtual environment:
@@ -111,6 +132,8 @@ python -m llm_wrapper_mcp_server --query "Calculate 15 * 3." --tool "calculator"
 ```
 
 ## Development
+
+For a detailed overview of the project's directory and file structure, refer to [docs/STRUCTURE.md](docs/STRUCTURE.md). This document is useful for understanding the codebase during development.
 
 Install development dependencies:
 

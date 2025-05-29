@@ -1,4 +1,2 @@
-pydantic-settings
-pytest-mock
-tiktoken>=0.5.1  # Token counting library
+tiktoken>=0.6.0
 llm-accounting
