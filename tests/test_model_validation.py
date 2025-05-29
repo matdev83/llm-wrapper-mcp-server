@@ -4,6 +4,7 @@ import os
 import json
 from unittest.mock import patch, Mock
 from llm_wrapper_mcp_server.__main__ import main
+from llm_wrapper_mcp_server.llm_mcp_wrapper import LLMMCPWrapper # Moved import to top
 
 def test_valid_model_selection(tmp_path, caplog):
     """Test valid model selection from allowed list"""
@@ -14,7 +15,7 @@ def test_valid_model_selection(tmp_path, caplog):
         'server.py',
         '--allowed-models-file', str(model_file),
         '--model', 'perplexity/llama-3.1-sonar-small-128k-online'
-    ]), patch('llm_wrapper_mcp_server.stdio_server.StdioServer.run') as mock_run:
+    ]), patch('llm_wrapper_mcp_server.llm_mcp_wrapper.LLMMCPWrapper.run') as mock_run: # Corrected patch path
         mock_run.side_effect = lambda: None  # Prevent actual server startup
         main()
     
@@ -62,64 +63,54 @@ def test_invalid_model_formatting(mocker, caplog):
     ]
     
     for model, expected_error in test_cases:
-        # Patch LLMClient at the module level to control its instantiation
-        with patch('llm_wrapper_mcp_server.stdio_server.LLMClient') as MockLLMClient:
-            # Configure the side_effect for MockLLMClient to return a properly configured mock
-            def side_effect_llm_client(*args, **kwargs):
-                mock_instance = mocker.Mock()
-                # Set attributes based on kwargs passed to LLMClient constructor
-                mock_instance.system_prompt = kwargs.get('system_prompt_path', '')
-                mock_instance.model = kwargs.get('model', 'default/model')
-                mock_instance.base_url = kwargs.get('api_base_url', "https://mocked.api") # Crucial for this error
-                
-                mock_instance.encoder = mocker.Mock()
-                mock_instance.encoder.encode.return_value = []
-                mock_instance.generate_response.return_value = {"response": "mocked response content"}
-                return mock_instance
+        with patch('llm_wrapper_mcp_server.llm_client.LLMClient') as MockLLMClient:
+            # Configure the mock LLMClient class
+            mock_llm_client_instance = MockLLMClient.return_value # This is the instance that LLMMCPWrapper will get
+            mock_llm_client_instance.system_prompt = ''
+            mock_llm_client_instance.model = 'default/model'
+            mock_llm_client_instance.base_url = "https://mocked.api"
+            mock_llm_client_instance.encoder = mocker.Mock()
+            mock_llm_client_instance.encoder.encode.return_value = []
+            mock_llm_client_instance.generate_response.return_value = {"response": "mocked response content"}
 
-            MockLLMClient.side_effect = side_effect_llm_client
+            server = LLMMCPWrapper() # This will use the patched LLMClient
 
-            # Initialize server (this will now use the mocked LLMClient)
-            from llm_wrapper_mcp_server.stdio_server import StdioServer
-            server = StdioServer()
-
-            # Get the initial mocked LLMClient instance that was created during server initialization
-            # This is MockLLMClient.side_effect() called once.
-            mock_llm_client_instance = MockLLMClient.call_args.return_value
-        
-        # Mock a tools/call request with invalid model
-        request = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {
-                "name": "ask_online",
-                "arguments": {
-                    "prompt": "test prompt",
-                    "model": model
+            # Now, mock_llm_client_instance is the same as server.llm_client
+            # We can assert on mock_llm_client_instance directly
+            
+            # Mock a tools/call request with invalid model
+            request = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "llm_call",
+                    "arguments": {
+                        "prompt": "test prompt",
+                        "model": model
+                    }
                 }
             }
-        }
-        
-        # Capture stdout
-        from io import StringIO
-        import sys
-        original_stdout = sys.stdout
-        sys.stdout = StringIO()
-        
-        server.handle_request(request)
-        
-        # Get and parse response
-        response = sys.stdout.getvalue()
-        sys.stdout = original_stdout
-        response_data = json.loads(response)
-        
-        assert response_data["error"]["code"] == -32602
-        assert response_data["error"]["message"] == "Invalid model specification"
-        assert expected_error in response_data["error"]["data"]
-        # Ensure generate_response was NOT called for invalid model formats
-        mock_llm_client_instance.generate_response.assert_not_called()
-        mock_llm_client_instance.generate_response.reset_mock() # Reset mock for next iteration
+            
+            # Capture stdout
+            from io import StringIO
+            import sys
+            original_stdout = sys.stdout
+            sys.stdout = StringIO()
+            
+            server.handle_request(request)
+            
+            # Get and parse response
+            response = sys.stdout.getvalue()
+            sys.stdout = original_stdout
+            response_data = json.loads(response)
+            
+            assert response_data["error"]["code"] == -32602
+            assert response_data["error"]["message"] == "Invalid model specification"
+            assert expected_error in response_data["error"]["data"]
+            # Ensure generate_response was NOT called for invalid model formats
+            mock_llm_client_instance.generate_response.assert_not_called()
+            mock_llm_client_instance.generate_response.reset_mock() # Reset mock for next iteration
 
 def test_invalid_model_selection(tmp_path, caplog):
     """Test invalid model not in allowed list"""

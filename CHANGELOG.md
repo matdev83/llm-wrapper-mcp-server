@@ -1,5 +1,7 @@
 # CHANGELOG
 
+### feat: Replace StdioServer with LLMMCPWrapper for generic LLM API server
+
 ## feat: Implement LLM audit logging and enhance usage tracking
 
 This commit introduces comprehensive audit logging for LLM interactions and

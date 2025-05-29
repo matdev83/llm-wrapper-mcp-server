@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest.mock import patch, MagicMock
 from llm_wrapper_mcp_server.llm_client import LLMClient
-from llm_wrapper_mcp_server.stdio_server import StdioServer
+from llm_wrapper_mcp_server.llm_mcp_wrapper import LLMMCPWrapper
 
 class TestRedactionFunctionality(unittest.TestCase):
     def setUp(self):
@@ -27,7 +27,8 @@ class TestRedactionFunctionality(unittest.TestCase):
         mock_response.headers = {}
         mock_post.return_value = mock_response
         
-        server = StdioServer(skip_api_key_redaction=False)
+        # Use LLMMCPWrapper instead of StdioServer
+        server = LLMMCPWrapper(skip_api_key_redaction=False)
         response = server.llm_client.generate_response("test prompt")
         processed_response = response["response"]
         
@@ -37,7 +38,8 @@ class TestRedactionFunctionality(unittest.TestCase):
     def test_api_key_redaction_disabled(self):
         """Test that API key remains when redaction is disabled"""
         with patch.object(LLMClient, 'generate_response', return_value=self.mock_response) as mock_gen:
-            server = StdioServer(skip_api_key_redaction=True)
+            # Use LLMMCPWrapper instead of StdioServer
+            server = LLMMCPWrapper(skip_api_key_redaction=True)
             
             # Simulate API response containing the actual key
             response = server.llm_client.generate_response("test prompt")
@@ -59,7 +61,8 @@ class TestRedactionFunctionality(unittest.TestCase):
         mock_response.headers = {}
         mock_post.return_value = mock_response
         
-        server = StdioServer()
+        # Use LLMMCPWrapper instead of StdioServer
+        server = LLMMCPWrapper()
         server.llm_client.generate_response("test prompt")
         
         mock_logger.warning.assert_called_once_with("Redacting API key from response content")

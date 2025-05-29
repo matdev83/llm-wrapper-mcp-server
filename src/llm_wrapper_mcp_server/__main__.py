@@ -28,7 +28,17 @@ def main() -> None:
             # Continue execution, the trace log will show the final cwd
 
     # Full parser for all arguments
-    parser = argparse.ArgumentParser(description="MCP server for online LLM queries")
+    parser = argparse.ArgumentParser(description="Generic LLM API MCP server")
+    parser.add_argument(
+        "--server-name",
+        default="llm-wrapper-mcp-server",
+        help="Name of the MCP server (default: llm-wrapper-mcp-server)"
+    )
+    parser.add_argument(
+        "--server-description",
+        default="Generic LLM API MCP server",
+        help="Description of the MCP server (default: Generic LLM API MCP server)"
+    )
     parser.add_argument(
         "--system-prompt-file",
         default="config/prompts/system.txt",
@@ -99,7 +109,7 @@ def main() -> None:
     logger = logging.getLogger(__name__)
     logger.debug("Logging is configured and this is a DEBUG test message.")
 
-    from llm_wrapper_mcp_server.stdio_server import StdioServer
+    from llm_wrapper_mcp_server.llm_mcp_wrapper import LLMMCPWrapper
 
     # Validate allowed models if specified
     if args.allowed_models_file:
@@ -118,12 +128,14 @@ def main() -> None:
             logger.warning(f"Model '{args.model}' is not in the allowed models list")
             sys.exit(1)
 
-    server = StdioServer(
+    server = LLMMCPWrapper(
         system_prompt_path=args.system_prompt_file,
         model=args.model,
         llm_api_base_url=args.llm_api_base_url,
         skip_accounting=args.skip_accounting,
-        max_tokens=args.max_tokens
+        max_tokens=args.max_tokens,
+        server_name=args.server_name,
+        server_description=args.server_description
     )
     server.run()
 

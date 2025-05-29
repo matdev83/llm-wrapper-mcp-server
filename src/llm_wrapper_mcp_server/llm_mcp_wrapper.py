@@ -7,14 +7,15 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from .logger import get_logger
+import requests.exceptions # Import requests.exceptions
 
 logger = get_logger(__name__)
 
 from llm_wrapper_mcp_server.llm_client import LLMClient
 
 
-class StdioServer:
-    """STDIO-based MCP server implementation."""
+class LLMMCPWrapper:
+    """LLM MCP Wrapper server implementation."""
     
     def __init__(
         self,
@@ -25,7 +26,10 @@ class StdioServer:
         skip_outbound_key_checks: bool = False,
         skip_api_key_redaction: bool = False,
         skip_accounting: bool = False,
-        max_tokens: Optional[int] = None
+        max_tokens: Optional[int] = None,
+        server_name: str = "llm-wrapper-mcp-server",
+        server_description: str = "Generic LLM API MCP server",
+        initial_tools: Optional[Dict[str, Any]] = None
     ) -> None:
         """Initialize the server with configuration options."""
         logger.debug("StdioServer initialized")
@@ -38,26 +42,32 @@ class StdioServer:
         self.skip_outbound_key_checks = skip_outbound_key_checks
         self.skip_accounting = skip_accounting
         self.max_tokens = max_tokens
+        self.server_name = server_name
+        self.server_description = server_description
         self.openrouter_api_key = os.environ.get("OPENROUTER_API_KEY")
-        self.tools = {
-            "ask_online": {
-                "description": "Ask a natural language question for an online search assistant to retrieve information or perform fact checking.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "prompt": {
-                            "type": "string",
-                            "description": "The natural language question to ask. Maximum length is {max_tokens} tokens.".format(max_tokens=self.max_user_prompt_tokens)
+        
+        if initial_tools is None:
+            self.tools = {
+                "llm_call": {
+                    "description": "Make a generic call to the configured LLM with a given prompt.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "prompt": {
+                                "type": "string",
+                                "description": "The natural language prompt for the LLM. Maximum length is {max_tokens} tokens.".format(max_tokens=self.max_user_prompt_tokens)
+                            },
+                            "model": {
+                                "type": "string",
+                                "description": "Optional model name to use for this request. If not specified, uses the default model."
+                            }
                         },
-                        "model": {
-                            "type": "string",
-                            "description": "Optional model name to use for this request. If not specified, uses the default model."
-                        }
-                    },
-                    "required": ["prompt"]
+                        "required": ["prompt"]
+                    }
                 }
             }
-        }
+        else:
+            self.tools = initial_tools
     
     def send_response(self, response: Dict[str, Any]) -> None:
         """Send a JSON-RPC response to stdout."""
@@ -84,9 +94,9 @@ class StdioServer:
                     "result": {
                         "protocolVersion": "2024-11-05",
                         "serverInfo": {
-                            "name": "llm-wrapper-mcp-server",
+                            "name": self.server_name,
                             "version": "0.1.0",
-                            "description": "Generic LLM API MCP server"
+                            "description": self.server_description
                         },
                         "capabilities": {
                             "tools": self.tools,
@@ -112,142 +122,8 @@ class StdioServer:
                 name = params.get("name")
                 args = params.get("arguments", {})
                 
-                if name == "ask_online":
-                    prompt = args.get("prompt")
-                    if not prompt:
-                        logger.warning("Missing required 'prompt' argument for ask_online.", extra={'request_id': request_id})
-                        self.send_response({
-                            "jsonrpc": "2.0",
-                            "id": request_id,
-                            "error": {
-                                "code": -32602,
-                                "message": "Invalid params",
-                                "data": "Missing required 'prompt' argument"
-                            }
-                        })
-                        return
-                    
-                    # Check for API key leak in prompt
-                    if not self.skip_outbound_key_checks and self.openrouter_api_key and self.openrouter_api_key in prompt:
-                        logger.warning("API key leak detected in prompt", extra={'request_id': request_id})
-                        self.send_response({
-                            "jsonrpc": "2.0",
-                            "id": request_id,
-                            "error": {
-                                "code": -32602,
-                                "message": "Security violation",
-                                "data": "Prompt contains sensitive API key - request rejected"
-                            }
-                        })
-                        return  # Make sure to return immediately after sending error response
-                    
-                    # Check prompt token length
-                    prompt_tokens = len(self.llm_client.encoder.encode(prompt))
-                    logger.debug("Prompt token count: %d/%d", prompt_tokens, self.max_user_prompt_tokens, extra={'request_id': request_id})
-                    if prompt_tokens > self.max_user_prompt_tokens:
-                        self.send_response({
-                            "jsonrpc": "2.0",
-                            "id": request_id,
-                            "error": {
-                                "code": -32602,
-                                "message": "Invalid params",
-                                "data": f"Prompt exceeds maximum length of {self.max_user_prompt_tokens} tokens"
-                            }
-                        })
-                        return
-                    
-                    # Get the optional model parameter
-                    model = args.get("model")
-                    
-                    # Variable to hold the model to use for generation
-                    model_to_use = None
-
-                    # Validate model name if specified
-                    if model is not None: # Check if model argument was provided at all
-                        stripped_model = model.strip() # Strip whitespace before validation
-                        if len(stripped_model) < 2:
-                            self.send_response({
-                                "jsonrpc": "2.0",
-                                "id": request_id,
-                                "error": {
-                                    "code": -32602,
-                                    "message": "Invalid model specification",
-                                    "data": "Model name must be at least 2 characters"
-                                }
-                            })
-                            return
-                        if '/' not in stripped_model:
-                            self.send_response({
-                                "jsonrpc": "2.0",
-                                "id": request_id,
-                                "error": {
-                                    "code": -32602,
-                                    "message": "Invalid model specification",
-                                    "data": "Model name must contain a '/' separator"
-                                }
-                            })
-                            return
-                        
-                        parts = stripped_model.split('/')
-                        if len(parts) != 2 or not all(parts): # Check if there are exactly two parts and both are non-empty
-                            self.send_response({
-                                "jsonrpc": "2.0",
-                                "id": request_id,
-                                "error": {
-                                    "code": -32602,
-                                    "message": "Invalid model specification",
-                                    "data": "Model name must contain a provider and a model separated by a single '/'"
-                                }
-                            })
-                            return
-                        
-                        # If model was provided and passed validation, set it for use
-                        model_to_use = stripped_model
-                    
-                    try:
-                        # Determine which LLMClient to use
-                        client_to_use = self.llm_client
-                        if model_to_use: # If a specific, validated model was determined
-                            # Create a temporary LLM client with the specified model
-                            temp_client = LLMClient(
-                                system_prompt_path=self.llm_client.system_prompt,
-                                model=model_to_use,
-                                api_base_url=self.llm_client.base_url
-                            )
-                            client_to_use = temp_client
-                        
-                        response = client_to_use.generate_response(prompt=prompt, max_tokens=self.max_tokens)
-
-                        # Construct the response in the format observed from fetch-mcp
-                        mcp_response = {
-                            "jsonrpc": "2.0",
-                            "id": request_id,
-                            "result": {
-                                "content": [{
-                                    "type": "text",
-                                    "text": response["response"]
-                                }],
-                                "isError": False
-                            }
-                        }
-                        logger.debug("Sending MCP response: %s", mcp_response, extra={'request_id': request_id})
-                        self.send_response(mcp_response)
-                        logger.debug("send_response completed.", extra={'request_id': request_id})
-
-                    except Exception as e:
-                        import traceback
-                        tb = traceback.format_exc()
-                        logger.error("Error during ask_online tool execution: %s", str(e), extra={'request_id': request_id})
-                        self.send_response({
-                            "jsonrpc": "2.0",
-                            "id": request_id,
-                            "error": {
-                                "code": -32000,
-                                "message": f"Internal error: {str(e)}",
-                            "data": str(tb) # Ensure data is always a string
-                        }
-                    })
-                else:
+                # Check if the tool name exists in self.tools
+                if name not in self.tools:
                     logger.warning("Tool not found: %s", name, extra={'request_id': request_id})
                     self.send_response({
                         "jsonrpc": "2.0",
@@ -257,6 +133,161 @@ class StdioServer:
                             "message": "Method not found",
                             "data": f"Tool '{name}' not found"
                         }
+                    })
+                    return
+
+                # Generic LLM call handling for any tool defined in self.tools
+                prompt = args.get("prompt")
+                if not prompt:
+                    logger.warning("Missing required 'prompt' argument for tool '%s'.", name, extra={'request_id': request_id})
+                    self.send_response({
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "error": {
+                            "code": -32602,
+                            "message": "Invalid params",
+                            "data": "Missing required 'prompt' argument"
+                        }
+                    })
+                    return
+                
+                # Check for API key leak in prompt
+                if not self.skip_outbound_key_checks and self.openrouter_api_key and self.openrouter_api_key in prompt:
+                    logger.warning("API key leak detected in prompt", extra={'request_id': request_id})
+                    self.send_response({
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "error": {
+                            "code": -32602,
+                            "message": "Security violation",
+                            "data": "Prompt contains sensitive API key - request rejected"
+                        }
+                    })
+                    return  # Make sure to return immediately after sending error response
+                
+                # Check prompt token length
+                prompt_tokens = len(self.llm_client.encoder.encode(prompt))
+                logger.debug("Prompt token count: %d/%d", prompt_tokens, self.max_user_prompt_tokens, extra={'request_id': request_id})
+                if prompt_tokens > self.max_user_prompt_tokens:
+                    self.send_response({
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "error": {
+                            "code": -32602,
+                            "message": "Invalid params",
+                            "data": f"Prompt exceeds maximum length of {self.max_user_prompt_tokens} tokens"
+                        }
+                    })
+                    return
+                
+                # Get the optional model parameter
+                model = args.get("model")
+                
+                # Variable to hold the model to use for generation
+                model_to_use = None
+
+                # Validate model name if specified
+                if model is not None: # Check if model argument was provided at all
+                    stripped_model = model.strip() # Strip whitespace before validation
+                    if len(stripped_model) < 2:
+                        self.send_response({
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "error": {
+                                "code": -32602,
+                                "message": "Invalid model specification",
+                                "data": "Model name must be at least 2 characters"
+                            }
+                        })
+                        return
+                    if '/' not in stripped_model:
+                        self.send_response({
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "error": {
+                                "code": -32602,
+                                "message": "Invalid model specification",
+                                "data": "Model name must contain a '/' separator"
+                            }
+                        })
+                        return
+                    
+                    parts = stripped_model.split('/')
+                    if len(parts) != 2 or not all(parts): # Check if there are exactly two parts and both are non-empty
+                        self.send_response({
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "error": {
+                                "code": -32602,
+                                "message": "Invalid model specification",
+                                "data": "Model name must contain a provider and a model separated by a single '/'"
+                            }
+                        })
+                        return
+                    
+                    # If model was provided and passed validation, set it for use
+                    model_to_use = stripped_model
+                
+                try:
+                    # Determine which LLMClient to use
+                    client_to_use = self.llm_client
+                    if model_to_use: # If a specific, validated model was determined
+                        # Create a temporary LLM client with the specified model
+                        temp_client = LLMClient(
+                            system_prompt_path=self.llm_client.system_prompt,
+                            model=model_to_use,
+                            api_base_url=self.llm_client.base_url
+                        )
+                        client_to_use = temp_client
+                    
+                    response = client_to_use.generate_response(prompt=prompt, max_tokens=self.max_tokens)
+
+                    # Construct the response in the format observed from fetch-mcp
+                    mcp_response = {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{
+                                "type": "text",
+                                "text": response["response"]
+                            }],
+                            "isError": False # Successful response, so isError is False
+                        }
+                    }
+                    logger.debug("Sending MCP response: %s", mcp_response, extra={'request_id': request_id})
+                    self.send_response(mcp_response)
+                    logger.debug("send_response completed.", extra={'request_id': request_id})
+
+                except Exception as e:
+                    import traceback
+                    tb = traceback.format_exc()
+                    
+                    error_message = f"Internal error: {str(e)}"
+                    if isinstance(e, requests.exceptions.Timeout):
+                        error_message = "LLM call timed out."
+                    elif isinstance(e, requests.exceptions.HTTPError):
+                        error_message = f"LLM API HTTP error: {e.response.status_code} {e.response.reason}"
+                    elif isinstance(e, requests.exceptions.RequestException):
+                        error_message = f"LLM API network error: {str(e)}"
+                    elif isinstance(e, RuntimeError):
+                        # Catch specific RuntimeErrors from LLMClient
+                        if "API rate limit exceeded" in str(e):
+                            error_message = str(e) # Use the specific message from LLMClient
+                        elif "Invalid API response format" in str(e):
+                            error_message = str(e)
+                        elif "Unexpected API response format" in str(e):
+                            error_message = str(e)
+
+                    logger.error("Error during tool '%s' execution: %s", name, str(e), extra={'request_id': request_id})
+                    self.send_response({
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "error": {
+                            "code": -32000,
+                            "message": error_message,
+                            "data": str(tb) # Ensure data is always a string
+                        },
+                        "isError": True # Set isError to True for error responses
                     })
             elif method == "resources/list":
                 logger.debug("Handling resources/list request.", extra={'request_id': request_id})
@@ -323,9 +354,9 @@ class StdioServer:
             "result": {
                 "protocolVersion": "2024-11-05",
                 "serverInfo": {
-                            "name": "llm-wrapper-mcp-server",
+                            "name": self.server_name,
                     "version": "0.1.0",
-                    "description": "Generic LLM API MCP server"
+                    "description": self.server_description
                 },
                 "capabilities": {
                     "tools": self.tools,
