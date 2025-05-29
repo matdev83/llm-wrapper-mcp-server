@@ -79,37 +79,95 @@ To run the server, execute the following command:
 python -m llm_wrapper_mcp_server
 ```
 
-The server will start on `http://localhost:8000` by default.
+This server operates as a Model Context Protocol (MCP) STDIO server, communicating via standard input and output. It does not open a network port.
 
-### API Endpoints
+### MCP Communication
 
-- `POST /ask`: Main endpoint for LLM requests
-- `GET /health`: Health check endpoint
+The server communicates using JSON-RPC messages over `stdin` and `stdout`. It supports the following MCP methods:
 
-### Client Code Examples
+- `initialize`: Handshake to establish protocol version and server capabilities.
+- `tools/list`: Lists available tools.
+- `tools/call`: Executes a specified tool.
+- `resources/list`: Lists available resources.
+- `resources/templates/list`: Lists available resource templates.
 
-The `llm-wrapper-mcp-server` package can be used by client applications to create their own MCP servers and interact with remote LLM models. Here's an example of how to set up a basic client:
+### Client Interaction Example (Python)
+
+You can interact with the STDIO MCP server using any language that supports standard input/output communication. Here's a Python example using the `subprocess` module:
 
 ```python
-from llm_wrapper_mcp_server.llm_mcp_server import LLMMCPWrapperServer
-from llm_wrapper_mcp_server.llm_client import LLMClient
+import subprocess
+import json
+import time
 
-# Initialize the LLM MCP Wrapper Server
-# This server will handle communication with the actual LLM provider
-llm_server = LLMMCPWrapperServer()
+def send_request(process, request):
+    """Sends a JSON-RPC request to the server's stdin."""
+    request_str = json.dumps(request) + "\\n"
+    process.stdin.write(request_str.encode('utf-8'))
+    process.stdin.flush()
 
-# Initialize the LLM Client
-# This client can be used by your application to send requests to the LLM server
-llm_client = LLMClient(server_url="http://localhost:8000") # Assuming your server is running locally
-
-async def main():
-    # Example: Ask the LLM a question
-    response = await llm_client.ask("What is the capital of France?")
-    print(f"LLM Response: {response}")
+def read_response(process):
+    """Reads a JSON-RPC response from the server's stdout."""
+    line = process.stdout.readline().decode('utf-8').strip()
+    if line:
+        return json.loads(line)
+    return None
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    # Start the MCP server as a subprocess
+    # Ensure you have the virtual environment activated or the package installed globally
+    server_process = subprocess.Popen(
+        ["python", "-m", "llm_wrapper_mcp_server"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, # Capture stderr for debugging
+        text=False # Use bytes for stdin/stdout
+    )
+
+    print("Waiting for server to initialize...")
+    # The server sends an initial capabilities message on startup (id: None)
+    initial_response = read_response(server_process)
+    print(f"Server Initial Response: {json.dumps(initial_response, indent=2)}")
+
+    # 1. Send an 'initialize' request
+    initialize_request = {
+        "jsonrpc": "2.0",
+        "id": "1",
+        "method": "initialize",
+        "params": {}
+    }
+    print("\\nSending initialize request...")
+    send_request(server_process, initialize_request)
+    initialize_response = read_response(server_process)
+    print(f"Initialize Response: {json.dumps(initialize_response, indent=2)}")
+
+    # 2. Send a 'tools/call' request to use the 'llm_call' tool
+    llm_call_request = {
+        "jsonrpc": "2.0",
+        "id": "2",
+        "method": "tools/call",
+        "params": {
+            "name": "llm_call",
+            "arguments": {
+                "prompt": "What is the capital of France?"
+            }
+        }
+    }
+    print("\\nSending llm_call request...")
+    send_request(server_process, llm_call_request)
+    llm_call_response = read_response(server_process)
+    print(f"LLM Call Response: {json.dumps(llm_call_response, indent=2)}")
+
+    # You can also read stderr for any server logs/errors
+    # Note: stderr might block if there's no output, consider using non-blocking reads or threads for real apps
+    # stderr_output = server_process.stderr.read().decode('utf-8')
+    # if stderr_output:
+    #     print("\\nServer Stderr Output:\\n", stderr_output)
+
+    # Terminate the server process
+    server_process.terminate()
+    server_process.wait(timeout=5) # Wait for process to terminate
+    print("\\nServer process terminated.")
 ```
 
 ### CLI Mode Usage
