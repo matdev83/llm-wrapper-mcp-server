@@ -9,6 +9,7 @@ from typing import Dict, Any, Optional
 from .logger import get_logger
 from llm_accounting import LLMAccounting
 from llm_accounting.backends.sqlite import SQLiteBackend
+from llm_accounting.audit_log import AuditLogger
 
 logger = get_logger(__name__)
 # Keep NOTSET to inherit level from root logger
@@ -40,7 +41,13 @@ class LLMClient:
         self.skip_redaction = False  # Initialize redaction control flag
         logger.debug("LLMClient initialized")
         self.api_key = os.getenv("OPENROUTER_API_KEY")
+        
+        # Ensure data directory exists for SQLite databases
+        os.makedirs("data", exist_ok=True)
+        
         self.llm_tracker = LLMAccounting(backend=SQLiteBackend(db_path="data/accounting.sqlite"))
+        self.audit_logger = AuditLogger(backend=SQLiteBackend(db_path="data/audit.sqlite"))
+        
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable not set")
         elif not (self.api_key.startswith('sk-') and len(self.api_key) >= 32):
@@ -68,6 +75,13 @@ class LLMClient:
             logger.warning(f"System prompt file {system_prompt_path} not found. Using empty system prompt.")
             self.system_prompt = ""
         
+    def close(self) -> None:
+        """Close LLM accounting instance."""
+        logger.debug("Closing LLMClient resources...")
+        self.llm_tracker.close()
+        # AuditLogger does not have a close method, its backend manages connection
+        logger.debug("LLMClient resources closed.")
+
     def generate_response(self, prompt: str, max_tokens: Optional[int] = None) -> Dict[str, Any]:
         """Generate a response for the given prompt."""
         # Calculate token counts
@@ -92,6 +106,14 @@ class LLMClient:
         }
         
         try:
+            # Log outbound prompt
+            self.audit_logger.log_prompt(
+                app_name="LLMClient.generate_response",
+                user_name=os.getenv("USERNAME", "unknown_user"),
+                model=self.model,
+                prompt_text=prompt
+            )
+
             logger.trace("Sending LLM API request to %s", f"{self.base_url}/chat/completions")
             logger.trace("Request payload: %s", payload)
 
@@ -126,6 +148,15 @@ class LLMClient:
             response_tokens = len(self.encoder.encode(response_content))
             logger.debug("Response token count: %d", response_tokens)
 
+            # Log remote reply
+            self.audit_logger.log_response(
+                app_name="LLMClient.generate_response",
+                user_name=os.getenv("USERNAME", "unknown_user"),
+                model=self.model,
+                response_text=response_content,
+                remote_completion_id=data.get('id') # Assuming 'id' is the completion ID
+            )
+
             # Log accounting information
             logger.debug(
                 "API usage - Total: %s, Prompt: %s, Completion: %s, Cost: %s",
@@ -143,7 +174,11 @@ class LLMClient:
                     completion_tokens=int(response.headers.get("X-Completion-Tokens", 0)),
                     total_tokens=int(response.headers.get("X-Total-Tokens", 0)),
                     cost=float(response.headers.get("X-Total-Cost", 0.0)),
-                    caller_name="LLMClient.generate_response"
+                    cached_tokens=int(response.headers.get("X-Cached-Tokens", 0)),
+                    reasoning_tokens=int(response.headers.get("X-Reasoning-Tokens", 0)),
+                    caller_name="LLMClient.generate_response",
+                    project="llm_wrapper_mcp_server",
+                    username=os.getenv("USERNAME", "unknown_user") # Use USERNAME env var or fallback
                 )
             except Exception as e:
                 logger.error(f"Failed to track LLM usage: {e}")
@@ -156,7 +191,9 @@ class LLMClient:
                     "total_tokens": response.headers.get("X-Total-Tokens"),
                     "prompt_tokens": response.headers.get("X-Prompt-Tokens"),
                     "completion_tokens": response.headers.get("X-Completion-Tokens"),
-                    "total_cost": response.headers.get("X-Total-Cost")
+                    "total_cost": response.headers.get("X-Total-Cost"),
+                    "cached_tokens": response.headers.get("X-Cached-Tokens"),
+                    "reasoning_tokens": response.headers.get("X-Reasoning-Tokens")
                 }
             }
 

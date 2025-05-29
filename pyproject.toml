@@ -5,9 +5,9 @@ build-backend = "hatchling.build"
 [project]
 name = "llm-wrapper-mcp-server"
 version = "0.1.0"
-description = "MCP server for online LLM queries via OpenRouter"
+description = "Wrap a call to any remote LLM model and expose it as an MCP server tool to allow your main model to communicate with other models."
 authors = [
-    {name = "Mateusz", email = "matdev83@gmail.com"},
+    {name = "Mateusz", email = "matdev83@github.com"},
 ]
 dependencies = [
     "fastapi>=0.104.0",

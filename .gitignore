@@ -123,5 +123,6 @@ yarn-error.log*
 Thumbs.db
 
 # Custom
-logs/*
 .clinerules/
+data/
+
