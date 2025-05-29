@@ -25,7 +25,7 @@ This project relies on the following key dependencies:
 *   `python-dotenv`: Reads key-value pairs from a `.env` file and sets them as environment variables.
 *   `requests`: An elegant and simple HTTP library for Python.
 *   `tiktoken`: A fast BPE tokeniser for use with OpenAI's models.
-*   `llm_accounting`: For robust logging, rate limiting, and audit functionalities, enabling monitoring of remote LLM usage, inference costs, and inspection of queries/responses for debugging or legal purposes.
+*   `llm-accounting`: For robust logging, rate limiting, and audit functionalities, enabling monitoring of remote LLM usage, inference costs, and inspection of queries/responses for debugging or legal purposes.
 
 ### Development Dependencies:
 *   `pytest`: A mature full-featured Python testing framework.
@@ -36,10 +36,18 @@ This project relies on the following key dependencies:
 
 ## Installation
 
+The `llm-wrapper-mcp-server` package is available on PyPI and can be installed via pip:
+
+```bash
+pip install llm-wrapper-mcp-server
+```
+
+Alternatively, for local development or to install from source:
+
 1. Create and activate a virtual environment:
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate  # On Windows: .venv\Scripts/activate
 ```
 
 2. Install the package:
@@ -98,11 +106,6 @@ async def main():
     # Example: Ask the LLM a question
     response = await llm_client.ask("What is the capital of France?")
     print(f"LLM Response: {response}")
-
-    # Example: Use a tool (if supported by the LLM and configured)
-    # This is a simplified example, actual tool usage depends on your MCP server's capabilities
-    tool_response = await llm_client.use_tool("calculator", {"expression": "2+2"})
-    print(f"Tool Response: {tool_response}")
 
 if __name__ == "__main__":
     import asyncio

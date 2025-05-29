@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llm-wrapper-mcp-server"
-version = "0.1.2"
+version = "0.1.3"
 description = "Wrap a call to any remote LLM model and expose it as an MCP server tool to allow your main model to communicate with other models."
 authors = [
     {name = "Mateusz", email = "matdev83@github.com"},
