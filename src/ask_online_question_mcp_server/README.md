@@ -15,8 +15,8 @@ The following diagram illustrates the role of the "Ask Online Question" MCP Serv
 
 ```mermaid
 graph TD
-    A[Agent Software] -->|MCP Protocol (stdin/stdout)| B(Ask Online Question MCP Server)
-    B -->|LLM API Call (ask_online_question tool)| C(LLM Wrapper MCP Server)
+    A[Agent Software] -->|MCP Protocol (stdin/stdout)| B[Ask Online Question MCP Server]
+    B -->|LLM API Call (ask_online_question tool)| C[LLM Wrapper MCP Server]
     C -->|LLM API Calls| D(OpenRouter.ai / Other LLM Providers)
     D -->|LLM Responses| C
     C -->|LLM Response| B
