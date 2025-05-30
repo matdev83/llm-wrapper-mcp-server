@@ -1,6 +1,10 @@
 # tests/test_ask_online_question_server.py
 import pytest
 import json
+import subprocess
+import sys
+import os
+import time
 from unittest.mock import patch, MagicMock
 from ask_online_question_mcp_server.ask_online_question_server import AskOnlineQuestionServer
 import io
@@ -32,6 +36,95 @@ def get_response_from_ask_mock(capsys):
                 # If a line is not valid JSON, skip it and try the next
                 continue
     return None
+
+@pytest.fixture
+def run_server_process():
+    """Fixture to run the MCP server as a subprocess and yield its process object and stderr buffer."""
+    # Ensure LLM_ACCOUNTING_DB_URL is not set to trigger warnings if alembic.ini is missing
+    env = os.environ.copy()
+    if "LLM_ACCOUNTING_DB_URL" in env:
+        del env["LLM_ACCOUNTING_DB_URL"]
+
+    # Start the server as a subprocess
+    process = subprocess.Popen(
+        [sys.executable, "-m", "src.ask_online_question_mcp_server", "--model", "test-model"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,  # Use text mode for universal newlines and string I/O
+        bufsize=1,  # Line-buffered
+        env=env
+    )
+    
+    stderr_buffer = []
+    yield process, stderr_buffer
+    
+    # Clean up: terminate the process and read any remaining output
+    process.terminate()
+    try:
+        process.wait(timeout=1)
+        if process.stderr:
+            stderr_buffer.append(process.stderr.read())
+    except subprocess.TimeoutExpired:
+        process.kill()
+        if process.stderr:
+            stderr_buffer.append(process.stderr.read())
+    
+    if process.stdout:
+        process.stdout.close()
+    if process.stderr:
+        process.stderr.close()
+
+
+def test_server_initial_output_no_warnings(run_server_process):
+    """
+    Test that the server produces no unexpected output (like warnings) before the initial JSON handshake.
+    """
+    process, stderr_buffer = run_server_process
+    
+    # Read lines from stdout until the first JSON object is found
+    pre_json_stdout = []
+    json_found = False
+    start_time = time.time()
+    timeout = 10  # seconds
+
+    while time.time() - start_time < timeout:
+        line = process.stdout.readline()
+        if not line:
+            # If no line is read, and process is still alive, wait a bit
+            if process.poll() is None:
+                time.sleep(0.1)
+                continue
+            else:
+                # Process exited, no more output
+                break
+        
+        stripped_line = line.strip()
+        if stripped_line:
+            try:
+                # Attempt to parse as JSON
+                json_data = json.loads(stripped_line)
+                # If successful, this is the handshake. Stop reading pre-JSON output.
+                json_found = True
+                break
+            except json.JSONDecodeError:
+                # Not JSON, so it's unexpected output
+                pre_json_stdout.append(stripped_line)
+        
+    assert json_found, "Server did not produce initial JSON handshake within timeout."
+    
+    # Assert that all collected pre-JSON output lines are empty or expected
+    # Assert that all collected pre-JSON output lines are empty or expected
+    print(f"\n--- Debugging Output ---")
+    print(f"Pre-JSON stdout: {pre_json_stdout}")
+    
+    # Check stderr for any errors/warnings after the process has terminated (handled by fixture cleanup)
+    final_stderr_output = "".join(stderr_buffer).strip()
+    print(f"Final stderr: {final_stderr_output}")
+    print(f"--- End Debugging Output ---")
+
+    assert not pre_json_stdout, f"Unexpected output on stdout before JSON handshake: {pre_json_stdout}"
+    assert not final_stderr_output, f"Unexpected output on stderr: {final_stderr_output}"
 
 def test_ask_server_initialize(ask_server, capsys):
     # The server sends an initial capabilities response during initialization

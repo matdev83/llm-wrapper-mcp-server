@@ -1,6 +1,7 @@
 import os
 import pytest
 import requests
+import logging # Added import for logging
 from unittest.mock import patch, Mock
 from src.llm_wrapper_mcp_server.llm_client import LLMClient, logger, ApiKeyFilter
 
@@ -11,10 +12,13 @@ def mock_env(monkeypatch):
     monkeypatch.setenv("LLM_API_BASE_URL", "https://mock.openrouter.ai/api/v1")
 
 @pytest.fixture
-def client(mock_env):
+def client(mock_env, unique_db_paths):
+    accounting_db_path, audit_db_path = unique_db_paths
     return LLMClient(
         system_prompt_path="tests/fixtures/system_prompt.txt",
-        model="test-model"
+        model="test-model",
+        db_path_accounting=accounting_db_path,
+        db_path_audit=audit_db_path
     )
 
 def test_initialization_with_missing_api_key(monkeypatch):
@@ -36,6 +40,8 @@ def test_system_prompt_loading(tmp_path):
     assert client.system_prompt == "Test system prompt"
 
 def test_missing_system_prompt_file(caplog):
+    caplog.set_level(logging.WARNING) # Ensure WARNING level messages are captured
+    logger.setLevel(logging.WARNING) # Explicitly set logger level for this test
     client = LLMClient(system_prompt_path="non_existent.txt")
     assert "System prompt file non_existent.txt not found" in caplog.text
     assert client.system_prompt == ""
@@ -83,7 +89,7 @@ def test_network_error_handling(mock_post, client):
     mock_post.side_effect = requests.exceptions.ConnectionError("Network failure")
     
     with pytest.raises(RuntimeError, match="Network error"):
-        client.generate_response("Test prompt")
+        client.generate_response("test")
 
 @patch("requests.post")
 def test_malformed_response_handling(mock_post, client):
@@ -96,15 +102,18 @@ def test_malformed_response_handling(mock_post, client):
     with pytest.raises(RuntimeError, match="Missing choices array"):
         client.generate_response("Test prompt")
 
-def test_api_key_redaction(caplog):
-    client = LLMClient()
+@patch('src.llm_wrapper_mcp_server.llm_client.logger')
+def test_api_key_redaction(mock_logger, unique_db_paths):
+    # Instantiate client
+    client = LLMClient(db_path_accounting=unique_db_paths[0], db_path_audit=unique_db_paths[1]) # Use unique in-memory DBs
     assert client.api_key is not None  # Type check guard
     test_content = f"Here is the key: {client.api_key}"
     redacted = client.redact_api_key(test_content)
     
     assert "(API key redacted due to security reasons)" in redacted
     assert client.api_key not in redacted
-    assert "Redacting API key" in caplog.text
+    # Assert that the warning method was called with the expected message
+    mock_logger.warning.assert_called_with("Redacting API key from response content")
 
 def test_response_redaction_disabled(client):
     assert client.api_key is not None  # Type check guard
@@ -152,8 +161,9 @@ def test_logger_filter_attachment(client):
     assert any(isinstance(f, ApiKeyFilter) 
               for f in logger.filters)
 
-def test_timeout_handling():
-    client = LLMClient()
+def test_timeout_handling(unique_db_paths):
+    # Ensure this test also uses in-memory databases
+    client = LLMClient(db_path_accounting=unique_db_paths[0], db_path_audit=unique_db_paths[1])
     with patch("requests.post") as mock_post:
         mock_post.side_effect = requests.exceptions.Timeout("Request timed out")
         

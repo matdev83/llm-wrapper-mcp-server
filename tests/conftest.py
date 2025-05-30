@@ -1,4 +1,15 @@
 import pytest
+import uuid
+
+@pytest.fixture
+def unique_db_paths():
+    """
+    Provides unique in-memory database paths for accounting and audit logs
+    to ensure test isolation.
+    """
+    accounting_db_path = f"file:{uuid.uuid4()}?mode=memory&cache=shared"
+    audit_db_path = f"file:{uuid.uuid4()}?mode=memory&cache=shared"
+    return accounting_db_path, audit_db_path
 
 def pytest_collection_modifyitems(config, items):
     """

@@ -35,20 +35,28 @@ class LLMClient:
         system_prompt_path: str = "config/prompts/system.txt",
         model: str = "perplexity/llama-3.1-sonar-small-128k-online",
         api_base_url: Optional[str] = None,
-        api_key: Optional[str] = None # New parameter
+        api_key: Optional[str] = None, # New parameter
+        db_path_accounting: Optional[str] = None, # New parameter for accounting DB path
+        db_path_audit: Optional[str] = None,      # New parameter for audit DB path
+        skip_redaction: bool = False # New parameter for redaction control
     ) -> None:
         """Initialize the client with API key from environment or direct parameter."""
         self.encoder = tiktoken.get_encoding("cl100k_base")
-        self.skip_redaction = False  # Initialize redaction control flag
+        self.skip_redaction = skip_redaction  # Use the new parameter for redaction control
         logger.debug("LLMClient initialized")
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY") # Use provided key or env var
         logger.debug(f"DEBUG: LLMClient initialized with API Key: {self.api_key}")
         
-        # Ensure data directory exists for SQLite databases
-        os.makedirs("data", exist_ok=True)
+        # Ensure data directory exists for SQLite databases if not using in-memory
+        if db_path_accounting != ":memory:" or db_path_audit != ":memory:":
+            os.makedirs("data", exist_ok=True)
         
-        self.llm_tracker = LLMAccounting(backend=SQLiteBackend(db_path="data/accounting.sqlite"))
-        self.audit_logger = AuditLogger(backend=SQLiteBackend(db_path="data/audit.sqlite"))
+        # Use provided db_path parameters or default to file paths
+        accounting_db_path = db_path_accounting if db_path_accounting is not None else "data/accounting.sqlite"
+        audit_db_path = db_path_audit if db_path_audit is not None else "data/audit.sqlite"
+
+        self.llm_tracker = LLMAccounting(backend=SQLiteBackend(db_path=accounting_db_path))
+        self.audit_logger = AuditLogger(backend=SQLiteBackend(db_path=audit_db_path))
         
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable not set")

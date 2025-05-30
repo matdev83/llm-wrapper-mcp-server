@@ -10,12 +10,9 @@ authors = [
     {name = "Mateusz", email = "matdev83@github.com"},
 ]
 dependencies = [
-    "pydantic>=2.4.2",
-    "pydantic-settings>=2.0.0",
-    "python-dotenv>=1.0.0",
     "requests>=2.31.0",
     "tiktoken>=0.6.0",
-    "llm_accounting>=0.1.0"
+    "pytest", # Keep pytest here as it's a core test dependency
 ]
 requires-python = ">=3.8"
 readme = "README.md"
@@ -50,5 +47,5 @@ packages = ["src/llm_wrapper_mcp_server"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["-v", "--import-mode=importlib"]
-pythonpath = ["."]
+pythonpath = [".", "src"]
 markers = ["integration: marks tests as integration tests"]

@@ -40,7 +40,8 @@ class LLMMCPWrapper:
             system_prompt_path=system_prompt_path,
             model=model,
             api_base_url=llm_api_base_url,
-            api_key=llm_api_key # Pass the new parameter
+            api_key=llm_api_key, # Pass the new parameter
+            skip_redaction=skip_api_key_redaction # Pass skip_api_key_redaction to LLMClient
         )
         self.system_prompt_path = system_prompt_path # Store as instance attribute
         self.max_user_prompt_tokens = max_user_prompt_tokens

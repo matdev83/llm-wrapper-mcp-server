@@ -84,6 +84,14 @@ Default settings if not overridden by CLI arguments:
     - Tool Executor
     - LLM Accounting Integration
 
+### Ask Online Question MCP Server (Reference Implementation)
+
+This project includes a reference implementation of a fully functional MCP server named "Ask Online Question". 
+
+It can be directly integrated into your agentic workflows, providing cloud-based, LLM-powered online search capabilities via the MCP protocol.  
+
+This server demonstrates how to build a specialized MCP server on top of the `llm-wrapper-mcp-server` foundation. For detailed information on its features, usage, and how to integrate it with your agent, please refer to its dedicated README: [src/ask_online_question_mcp_server/README.md](src/ask_online_question_mcp_server/README.md).
+
 ### Running the Server
 
 To run the server, execute the following command:
@@ -190,14 +198,6 @@ if __name__ == "__main__":
     server_process.wait(timeout=5) # Wait for process to terminate
     print("\\nServer process terminated.")
 ```
-
-## Ask Online Question MCP Server (Reference Implementation)
-
-This project includes a reference implementation of a custom MCP server named "Ask Online Question". This server demonstrates how to build a specialized MCP server on top of the `llm-wrapper-mcp-server` foundation. For detailed information on its features, usage, and how to integrate it with your agent, please refer to its dedicated README: [src/ask_online_question_mcp_server/README.md](src/ask_online_question_mcp_server/README.md).
-
-## Online LLM Server (Reference Implementation)
-
-This project also includes a specialized MCP server for online LLM queries, providing a `search_online` tool. This server demonstrates how to build another type of custom MCP server on top of the `llm-wrapper-mcp-server` foundation. For more details, refer to its main script: [src/online_llm_server/online_server.py](src/online_llm_server/online_server.py).
 
 ## Development
 
