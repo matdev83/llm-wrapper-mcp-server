@@ -18,13 +18,17 @@ This document outlines the directory and file structure of the `llm-wrapper-mcp-
 │   └── STRUCTURE.md
 ├── logs/
 ├── src/
-│   └── llm_wrapper_mcp_server/
+│   ├── llm_wrapper_mcp_server/
+│   │   ├── __init__.py
+│   │   ├── __main__.py
+│   │   ├── llm_client.py
+│   │   ├── llm_mcp_server.py
+│   │   ├── llm_mcp_wrapper.py
+│   │   └── logger.py
+│   └── ask_online_question_mcp_server/
 │       ├── __init__.py
 │       ├── __main__.py
-│       ├── llm_client.py
-│       ├── llm_mcp_server.py
-│       ├── llm_mcp_wrapper.py
-│       └── logger.py
+│       └── ask_online_question_server.py
 ├── tests/
 │   ├── test_llm_client.py
 │   ├── test_llm_mcp_wrapper.py
@@ -45,6 +49,7 @@ This document outlines the directory and file structure of the `llm-wrapper-mcp-
 *   `logs/`: Stores application log files.
 *   `src/`: Contains the source code of the application.
     *   `llm_wrapper_mcp_server/`: The main Python package for the LLM wrapper MCP server.
+    *   `ask_online_question_mcp_server/`: A reference implementation of a custom MCP server, demonstrating how to extend the `llm-wrapper-mcp-server` foundation.
 *   `tests/`: Contains unit and integration tests for the project.
 
 ### File Descriptions:
@@ -61,6 +66,9 @@ This document outlines the directory and file structure of the `llm-wrapper-mcp-
 *   `src/llm_wrapper_mcp_server/llm_mcp_server.py`: Implements the MCP server logic for the LLM wrapper.
 *   `src/llm_wrapper_mcp_server/llm_mcp_wrapper.py`: Wraps LLM functionalities for MCP integration.
 *   `src/llm_wrapper_mcp_server/logger.py`: Configures and provides logging utilities.
+*   `src/ask_online_question_mcp_server/__init__.py`: Initializes the `ask_online_question_mcp_server` Python package.
+*   `src/ask_online_question_mcp_server/__main__.py`: Entry point for running the `ask_online_question_mcp_server` as a script.
+*   `src/ask_online_question_mcp_server/ask_online_question_server.py`: Implements the "Ask Online Question" MCP server, exposing the `ask_online_question` tool.
 *   `tests/test_llm_client.py`: Tests for the `llm_client.py` module.
 *   `tests/test_llm_mcp_wrapper.py`: Tests for the `llm_mcp_wrapper.py` module.
 *   `tests/test_model_validation.py`: Tests for model validation logic.

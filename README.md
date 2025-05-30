@@ -192,6 +192,10 @@ python -m llm_wrapper_mcp_server --query "What is the square root of 144?" --mod
 python -m llm_wrapper_mcp_server --query "Calculate 15 * 3." --tool "calculator" --tool-args '{"expression": "15 * 3"}'
 ```
 
+## Ask Online Question MCP Server (Reference Implementation)
+
+This project includes a reference implementation of a custom MCP server named "Ask Online Question". This server demonstrates how to build a specialized MCP server on top of the `llm-wrapper-mcp-server` foundation. For detailed information on its features, usage, and how to integrate it with your agent, please refer to its dedicated README: [src/ask_online_question_mcp_server/README.md](src/ask_online_question_mcp_server/README.md).
+
 ## Development
 
 For a detailed overview of the project's directory and file structure, refer to [docs/STRUCTURE.md](docs/STRUCTURE.md). This document is useful for understanding the codebase during development.
