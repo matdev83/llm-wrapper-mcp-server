@@ -49,7 +49,7 @@ Alternatively, for local development or to install from source:
 1. Create and activate a virtual environment:
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts/activate
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
 2. Install the package:
@@ -73,40 +73,16 @@ Default settings if not overridden by CLI arguments:
 
 ## Usage
 
-### Architecture Overview
+**Textual Overview:**
 
-The following diagram illustrates how the LLM Wrapper MCP Server integrates into an agent-based workflow:
-
-```mermaid
-graph TD
-    A[Agent Software] -->|MCP Protocol (stdin/stdout)| B["LLM Wrapper MCP Server"]
-    B -->|LLM API Calls| C(OpenRouter.ai / Other LLM Providers)
-    C -->|LLM Responses| B
-    B -->|MCP Protocol (stdout)| A
-    B -->|Logging/Accounting| D[LLM Accounting System]
-
-    subgraph LLM Wrapper MCP Server Components
-        B1(MCP Communication Handler)
-        B2(LLM Client)
-        B3(Tool Executor)
-        B4(LLM Accounting Integration)
-        B --> B1
-        B --> B2
-        B --> B3
-        B --> B4
-        B1 --> B2
-        B1 --> B3
-        B2 --> C
-        B3 --> C
-        B4 --> D
-    end
-
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style B fill:#bbf,stroke:#333,stroke-width:2px
-    style C fill:#ccf,stroke:#333,stroke-width:2px
-    style D fill:#cfc,stroke:#333,stroke-width:2px
-```
-*Note: This diagram is rendered using Mermaid syntax. If you are viewing this file in a plain text editor, you may need a compatible Markdown viewer (e.g., VS Code, GitHub) to see the graphical representation.*
+- Agent Software communicates with the LLM Wrapper MCP Server via the MCP Protocol (stdin/stdout).
+- The LLM Wrapper MCP Server interacts with LLM providers (e.g., OpenRouter.ai) for LLM API calls and responses.
+- The server also integrates with an LLM Accounting System for logging and auditing.
+- Main components:
+    - MCP Communication Handler
+    - LLM Client
+    - Tool Executor
+    - LLM Accounting Integration
 
 ### Running the Server
 
@@ -254,4 +230,3 @@ pip install -e ".[dev]"
 ## License
 
 MIT License
-```

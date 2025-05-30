@@ -11,34 +11,6 @@ This directory contains a reference implementation of a custom Model Context Pro
 
 ### Usage:
 
-The following diagram illustrates the role of the "Ask Online Question" MCP Server within an agent-based workflow:
-
-```mermaid
-graph TD
-    A[Agent Software] -->|MCP Protocol (stdin/stdout)| B[Ask Online Question MCP Server]
-    B -->|LLM API Call (ask_online_question tool)| C[LLM Wrapper MCP Server]
-    C -->|LLM API Calls| D(OpenRouter.ai / Other LLM Providers)
-    D -->|LLM Responses| C
-    C -->|LLM Response| B
-    B -->|MCP Protocol (stdout)| A
-    C -->|Logging/Accounting| E[LLM Accounting System]
-
-    subgraph Ask Online Question MCP Server
-        B1(MCP Communication Handler)
-        B2(Tool: ask_online_question)
-        B --> B1
-        B --> B2
-        B2 --> C
-    end
-
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style B fill:#bbf,stroke:#333,stroke-width:2px
-    style C fill:#ccf,stroke:#333,stroke-width:2px
-    style D fill:#ddf,stroke:#333,stroke-width:2px
-    style E fill:#cfc,stroke:#333,stroke-width:2px
-```
-*Note: This diagram is rendered using Mermaid syntax. If you are viewing this file in a plain text editor, you may need a compatible Markdown viewer (e.g., VS Code, GitHub) to see the graphical representation.*
-
 The "Ask Online Question" server can be run in two ways:
 
 1.  **From the project source (for development or local use):**
@@ -136,3 +108,4 @@ print(ask_online_question(prompt="What's the current weather in the capital of A
 - Tasks that require complex reasoning or multi-step problem-solving that cannot be resolved by a single factual query.
 
 If you opt to use `ask_online_question` mase sure you always provide the full question or keywords for online search as the `prompt` argument.
+```
