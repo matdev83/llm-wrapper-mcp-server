@@ -79,7 +79,7 @@ The following diagram illustrates how the LLM Wrapper MCP Server integrates into
 
 ```mermaid
 graph TD
-    A[Agent Software] -->|MCP Protocol (stdin/stdout)| B[LLM Wrapper MCP Server]
+    A[Agent Software] -->|MCP Protocol (stdin/stdout)| B["LLM Wrapper MCP Server"]
     B -->|LLM API Calls| C(OpenRouter.ai / Other LLM Providers)
     C -->|LLM Responses| B
     B -->|MCP Protocol (stdout)| A
