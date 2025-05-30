@@ -37,6 +37,7 @@ graph TD
     style D fill:#ddf,stroke:#333,stroke-width:2px
     style E fill:#cfc,stroke:#333,stroke-width:2px
 ```
+*Note: This diagram is rendered using Mermaid syntax. If you are viewing this file in a plain text editor, you may need a compatible Markdown viewer (e.g., VS Code, GitHub) to see the graphical representation.*
 
 The "Ask Online Question" server can be run in two ways:
 

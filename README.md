@@ -106,6 +106,7 @@ graph TD
     style C fill:#ccf,stroke:#333,stroke-width:2px
     style D fill:#cfc,stroke:#333,stroke-width:2px
 ```
+*Note: This diagram is rendered using Mermaid syntax. If you are viewing this file in a plain text editor, you may need a compatible Markdown viewer (e.g., VS Code, GitHub) to see the graphical representation.*
 
 ### Running the Server
 
