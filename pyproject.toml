@@ -10,8 +10,6 @@ authors = [
     {name = "Mateusz", email = "matdev83@github.com"},
 ]
 dependencies = [
-    "fastapi>=0.104.0",
-    "uvicorn>=0.24.0",
     "pydantic>=2.4.2",
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
@@ -53,3 +51,4 @@ packages = ["src/llm_wrapper_mcp_server"]
 testpaths = ["tests"]
 addopts = ["-v", "--import-mode=importlib"]
 pythonpath = ["."]
+markers = ["integration: marks tests as integration tests"]

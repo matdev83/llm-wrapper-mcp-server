@@ -25,15 +25,18 @@ This document outlines the directory and file structure of the `llm-wrapper-mcp-
 │   │   ├── llm_client.py
 │   │   ├── llm_mcp_wrapper.py
 │   │   └── logger.py
-│   └── ask_online_question_mcp_server/  # Reference implementation
-│       ├── __init__.py
-│       ├── __main__.py
-│       ├── README.md
-│       └── ask_online_question_server.py
+│   ├── ask_online_question_mcp_server/  # Reference implementation
+│   │   ├── __init__.py
+│   │   ├── __main__.py
+│   │   ├── README.md
+│   │   └── ask_online_question_server.py
+│   └── online_llm_server/ # New specialized MCP server
+│       └── online_server.py
 ├── tests/
 │   ├── fixtures/  # Recommended for test fixtures
 │   │   └── __init__.py # Make it a package
 │   │   └── system_prompt.txt # Example, based on test_llm_client.py
+│   ├── conftest.py
 │   ├── test_llm_client.py
 │   ├── test_llm_mcp_wrapper.py
 │   ├── test_model_validation.py
@@ -51,6 +54,7 @@ This document outlines the directory and file structure of the `llm-wrapper-mcp-
 *   `src/`: Contains the source code of the application.
     *   `llm_wrapper_mcp_server/`: The main Python package for the LLM wrapper MCP server.
     *   `ask_online_question_mcp_server/`: A reference implementation of a custom MCP server.
+    *   `online_llm_server/`: A specialized MCP server for online LLM queries, providing a `search_online` tool.
 *   `tests/`: Contains unit and integration tests for the project.
     *   `fixtures/`: Recommended location for test fixtures.
 
@@ -67,5 +71,7 @@ This document outlines the directory and file structure of the `llm-wrapper-mcp-
 *   `src/llm_wrapper_mcp_server/llm_mcp_wrapper.py`: Implements the MCP server logic for the LLM wrapper.
 *   `src/llm_wrapper_mcp_server/logger.py`: Configures and provides logging utilities.
 *   `src/ask_online_question_mcp_server/...`: Files for the reference MCP server implementation.
+*   `src/online_llm_server/online_server.py`: The main script for the specialized online LLM MCP server.
+*   `tests/conftest.py`: Pytest file for test configuration and fixtures.
 *   `tests/...`: Test files corresponding to different modules.
 ```

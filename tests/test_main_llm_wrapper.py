@@ -4,6 +4,8 @@ from unittest.mock import patch, MagicMock, call
 import os
 import sys
 import logging
+import io
+import gettext # Import gettext
 # Ensure the main function from the script is importable
 # If __main__.py is part of a package, this might need adjustment based on pythonpath
 # For this structure, assuming src is in pythonpath or package is installed.
@@ -18,8 +20,8 @@ def manage_cwd():
 
 @pytest.fixture
 def mock_llm_mcp_wrapper_constructor(mocker):
-    # Mocks the LLMMCPWrapper class constructor
-    mock_constructor = mocker.patch('llm_wrapper_mcp_server.__main__.LLMMCPWrapper')
+    # Mocks the LLMMCPWrapper class constructor at its original definition
+    mock_constructor = mocker.patch('llm_wrapper_mcp_server.llm_mcp_wrapper.LLMMCPWrapper')
     # Configure the mock constructor to return a mock instance
     mock_instance = mock_constructor.return_value
     mock_instance.run = MagicMock() # Mock the run method of the instance
@@ -41,6 +43,15 @@ def mock_dependencies(mocker, monkeypatch):
     mocker.patch('os.path.exists', return_value=True) # General mock for existence
     mocker.patch('builtins.open', mocker.mock_open(read_data="allowed/model")) # Mock open for allowed_models_file
 
+    # Mock gettext.translation to prevent it from trying to read .mo files
+    class MockTranslations:
+        def gettext(self, message):
+            return message
+        def ngettext(self, singular, plural, n):
+            return singular if n == 1 else plural
+
+    mocker.patch('gettext.translation', return_value=MockTranslations())
+
     return {
         "basicConfig": mock_basic_config,
         "logger": mock_logger_instance,
@@ -49,9 +60,12 @@ def mock_dependencies(mocker, monkeypatch):
     }
 
 
-def test_main_llm_wrapper_default_args(mock_llm_mcp_wrapper_constructor, mock_dependencies):
+def test_main_llm_wrapper_default_args(mock_llm_mcp_wrapper_constructor, mock_dependencies, monkeypatch):
     mock_constructor, mock_instance = mock_llm_mcp_wrapper_constructor
     
+    # Mock sys.stdin to prevent OSError during server.run()
+    monkeypatch.setattr(sys, 'stdin', io.StringIO(''))
+
     with patch.object(sys, 'argv', ['__main__.py']):
         llm_wrapper_main()
 
@@ -71,8 +85,11 @@ def test_main_llm_wrapper_default_args(mock_llm_mcp_wrapper_constructor, mock_de
     mock_dependencies["basicConfig"].assert_called_once()
 
 
-def test_main_llm_wrapper_custom_args(mock_llm_mcp_wrapper_constructor, mock_dependencies):
+def test_main_llm_wrapper_custom_args(mock_llm_mcp_wrapper_constructor, mock_dependencies, monkeypatch):
     mock_constructor, mock_instance = mock_llm_mcp_wrapper_constructor
+
+    # Mock sys.stdin to prevent OSError during server.run()
+    monkeypatch.setattr(sys, 'stdin', io.StringIO(''))
 
     test_args = [
         '__main__.py',
@@ -109,11 +126,14 @@ def test_main_llm_wrapper_custom_args(mock_llm_mcp_wrapper_constructor, mock_dep
         filemode='a'
     )
 
-def test_main_llm_wrapper_cwd_change(mock_llm_mcp_wrapper_constructor, mock_dependencies, tmp_path):
+def test_main_llm_wrapper_cwd_change(mock_llm_mcp_wrapper_constructor, mock_dependencies, tmp_path, monkeypatch):
     mock_constructor, mock_instance = mock_llm_mcp_wrapper_constructor
     
     new_cwd = tmp_path / "new_work_dir"
     new_cwd.mkdir()
+
+    # Mock sys.stdin to prevent OSError during server.run()
+    monkeypatch.setattr(sys, 'stdin', io.StringIO(''))
 
     # Mock os.chdir to verify it's called and to see its effect
     with patch.object(os, 'chdir') as mock_chdir:
@@ -124,12 +144,24 @@ def test_main_llm_wrapper_cwd_change(mock_llm_mcp_wrapper_constructor, mock_depe
     # main() changes CWD, so subsequent tests might be affected if not reset.
     # The manage_cwd fixture handles resetting CWD.
 
-def test_main_llm_wrapper_allowed_models_valid(mock_llm_mcp_wrapper_constructor, mock_dependencies, tmp_path):
+def test_main_llm_wrapper_allowed_models_valid(mock_llm_mcp_wrapper_constructor, mock_dependencies, tmp_path, monkeypatch):
     mock_constructor, _ = mock_llm_mcp_wrapper_constructor
     
+    # Mock sys.stdin to prevent OSError during server.run()
+    monkeypatch.setattr(sys, 'stdin', io.StringIO(''))
+
     model_file = tmp_path / "models.txt"
     model_file.write_text("perplexity/llama-3.1-sonar-small-128k-online\ncustom/model")
     
+    # Mock os.path.exists for the system prompt path to return False,
+    # so LLMClient uses an empty system prompt and doesn't try to open the file.
+    original_exists = os.path.exists
+    def mock_os_path_exists(path):
+        if path == "config/prompts/system.txt":
+            return False
+        return original_exists(path)
+    monkeypatch.setattr(os.path, 'exists', mock_os_path_exists)
+
     mock_dependencies["exists"].return_value = True # Ensure file is seen as existing
     mock_dependencies["open"].return_value = io.StringIO(model_file.read_text())
 
@@ -191,4 +223,3 @@ def test_main_llm_wrapper_allowed_models_file_not_found(mock_llm_mcp_wrapper_con
         f"Allowed models file not found: {str(missing_model_file)}"
     )
     mock_constructor.assert_not_called()
-```

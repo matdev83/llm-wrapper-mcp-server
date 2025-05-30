@@ -2,6 +2,8 @@
 
 > "Allow any MCP-capable LLM agent to communicate with or delegate tasks to any other LLM available through the OpenRouter.ai API."
 
+[GitHub Repository](https://github.com/matdev83/llm-wrapper-mcp-server)
+
 A Model Context Protocol (MCP) server wrapper designed to facilitate seamless interaction with various Large Language Models (LLMs) through a standardized interface. This project enables developers to integrate LLM capabilities into their applications by providing a robust and flexible STDIO-based server that handles LLM calls, tool execution, and result processing.
 
 ## Features
@@ -181,6 +183,10 @@ if __name__ == "__main__":
 ## Ask Online Question MCP Server (Reference Implementation)
 
 This project includes a reference implementation of a custom MCP server named "Ask Online Question". This server demonstrates how to build a specialized MCP server on top of the `llm-wrapper-mcp-server` foundation. For detailed information on its features, usage, and how to integrate it with your agent, please refer to its dedicated README: [src/ask_online_question_mcp_server/README.md](src/ask_online_question_mcp_server/README.md).
+
+## Online LLM Server (Reference Implementation)
+
+This project also includes a specialized MCP server for online LLM queries, providing a `search_online` tool. This server demonstrates how to build another type of custom MCP server on top of the `llm-wrapper-mcp-server` foundation. For more details, refer to its main script: [src/online_llm_server/online_server.py](src/online_llm_server/online_server.py).
 
 ## Development
 

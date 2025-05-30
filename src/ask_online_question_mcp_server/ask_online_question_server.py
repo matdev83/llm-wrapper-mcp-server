@@ -186,9 +186,8 @@ class AskOnlineQuestionServer:
         })
         logger.debug("Initial capabilities sent. Entering main request loop.")
         try: # Outer try for the finally block
-            try: # Inner try for the request loop
-                while True:
-                    line = sys.stdin.readline()
+            while True:
+                line = sys.stdin.readline()
                 if not line:
                     logger.info("Empty line or EOF received from stdin. Breaking loop.")
                     break

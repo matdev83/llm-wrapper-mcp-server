@@ -24,6 +24,7 @@ class LLMMCPWrapper:
         system_prompt_path: str = "config/prompts/system.txt",
         model: str = "perplexity/llama-3.1-sonar-small-128k-online",
         llm_api_base_url: Optional[str] = None,
+        llm_api_key: Optional[str] = None, # New parameter
         max_user_prompt_tokens: int = 100,
         skip_outbound_key_checks: bool = False,
         skip_api_key_redaction: bool = False,
@@ -38,8 +39,10 @@ class LLMMCPWrapper:
         self.llm_client = LLMClient(
             system_prompt_path=system_prompt_path,
             model=model,
-            api_base_url=llm_api_base_url
+            api_base_url=llm_api_base_url,
+            api_key=llm_api_key # Pass the new parameter
         )
+        self.system_prompt_path = system_prompt_path # Store as instance attribute
         self.max_user_prompt_tokens = max_user_prompt_tokens
         self.skip_outbound_key_checks = skip_outbound_key_checks
         self.skip_accounting = skip_accounting
@@ -236,7 +239,7 @@ class LLMMCPWrapper:
                     if model_to_use: # If a specific, validated model was determined
                         # Create a temporary LLM client with the specified model
                         temp_client = LLMClient(
-                            system_prompt_path=self.llm_client.system_prompt,
+                        system_prompt_path=self.system_prompt_path,
                             model=model_to_use,
                             api_base_url=self.llm_client.base_url
                         )

@@ -34,13 +34,15 @@ class LLMClient:
         self,
         system_prompt_path: str = "config/prompts/system.txt",
         model: str = "perplexity/llama-3.1-sonar-small-128k-online",
-        api_base_url: Optional[str] = None
+        api_base_url: Optional[str] = None,
+        api_key: Optional[str] = None # New parameter
     ) -> None:
-        """Initialize the client with API key from environment."""
+        """Initialize the client with API key from environment or direct parameter."""
         self.encoder = tiktoken.get_encoding("cl100k_base")
         self.skip_redaction = False  # Initialize redaction control flag
         logger.debug("LLMClient initialized")
-        self.api_key = os.getenv("OPENROUTER_API_KEY")
+        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY") # Use provided key or env var
+        logger.debug(f"DEBUG: LLMClient initialized with API Key: {self.api_key}")
         
         # Ensure data directory exists for SQLite databases
         os.makedirs("data", exist_ok=True)
@@ -57,9 +59,10 @@ class LLMClient:
         logger.addFilter(ApiKeyFilter(self.api_key))
         logger.info("API key format validation passed")
         self.base_url = api_base_url or os.getenv("LLM_API_BASE_URL", "https://openrouter.ai/api/v1")
+        logger.debug(f"DEBUG: LLMClient using base URL: {self.base_url}")
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": "https://github.com/your-repo",
+            "HTTP-Referer": "https://github.com/llm-wrapper-mcp-server",
             "X-Title": "Ask MCP Server",
             "Content-Type": "application/json",
             "X-API-Version": "1",
@@ -78,7 +81,7 @@ class LLMClient:
     def close(self) -> None:
         """Close LLM accounting instance."""
         logger.debug("Closing LLMClient resources...")
-        self.llm_tracker.close()
+        # self.llm_tracker.close() # LLMAccounting object does not have a close method
         # AuditLogger does not have a close method, its backend manages connection
         logger.debug("LLMClient resources closed.")
 
@@ -114,10 +117,10 @@ class LLMClient:
                 prompt_text=prompt
             )
 
-            logger.trace("Sending LLM API request to %s", f"{self.base_url}/chat/completions")
-            logger.trace("Request payload: %s", payload)
+            logger.debug("DEBUG: Sending LLM API request to %s", f"{self.base_url}/chat/completions")
+            logger.debug("DEBUG: Request payload: %s", payload)
 
-            logger.trace("Request headers: %s", self.headers)
+            logger.debug("DEBUG: Request headers: %s", self.headers)
 
             response = requests.post(
                 f"{self.base_url}/chat/completions",
@@ -126,9 +129,9 @@ class LLMClient:
                 timeout=30
             )
 
-            logger.trace("Received API response: %d %s", response.status_code, response.reason)
-            logger.trace("Response headers: %s", dict(response.headers))
-            logger.trace("Response content (first 200 chars): %.200s...", response.text)
+            logger.debug("DEBUG: Received API response: %d %s", response.status_code, response.reason)
+            logger.debug("DEBUG: Response headers: %s", dict(response.headers))
+            logger.debug("DEBUG: Response content (first 200 chars): %.200s...", response.text)
 
             response.raise_for_status()
             data = response.json()

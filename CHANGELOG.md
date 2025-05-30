@@ -1,5 +1,17 @@
 # CHANGELOG
 
+### feat: Introduce online LLM server reference implementation and enhance API key management
+
+- Introduce a new `online_llm_server` as a reference implementation, providing a `search_online` tool.
+- Update `README.md` and `docs/STRUCTURE.md` to reflect its inclusion.
+- Refactor `llm_client.py` and `llm_mcp_wrapper.py` to allow direct passing of API keys to constructors, improving flexibility and testability.
+- Remove `fastapi` and `uvicorn` from `pyproject.toml`.
+- Enhance `test_integration_openrouter.py` with more robust API key testing and `requests` mocking.
+- Refactor `test_ask_online_question_server.py` to use `capsys` for stdout capture.
+- Improve `test_main_llm_wrapper.py` with better mocking for `sys.stdin`, `gettext`, and `os.path.exists`.
+- Add `tests/conftest.py` for pytest configuration.
+- Make minor refactorings in `ask_online_question_mcp_server.py` for error handling and loop structure.
+
 ### feat: Introduce Ask Online Question MCP Server reference implementation and update core server logic
 
 - Add a new `ask_online_question_mcp_server` as a reference implementation for custom MCP servers.
