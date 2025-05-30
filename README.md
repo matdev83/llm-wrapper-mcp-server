@@ -2,14 +2,14 @@
 
 > "Allow any MCP-capable LLM agent to communicate with or delegate tasks to any other LLM available through the OpenRouter.ai API."
 
-A Model Context Protocol (MCP) server wrapper designed to facilitate seamless interaction with various Large Language Models (LLMs) through a standardized interface. This project enables developers to integrate LLM capabilities into their applications by providing a robust and flexible server that handles LLM calls, tool execution, and result processing.
+A Model Context Protocol (MCP) server wrapper designed to facilitate seamless interaction with various Large Language Models (LLMs) through a standardized interface. This project enables developers to integrate LLM capabilities into their applications by providing a robust and flexible STDIO-based server that handles LLM calls, tool execution, and result processing.
 
 ## Features
 
 - Implements the Model Context Protocol (MCP) specification for standardized LLM interactions.
-- Provides a FastAPI-based server for handling LLM requests and responses.
+- Provides an STDIO-based server for handling LLM requests and responses via standard input/output.
 - Supports advanced features like tool calls and results through the MCP protocol.
-- Configurable to use various LLM providers (e.g., OpenRouter, local models).
+- Configurable to use various LLM providers (e.g., OpenRouter, local models) via API base URL and model parameters.
 - Designed for extensibility, allowing easy integration of new LLM backends.
 - Integrates with `llm-accounting` for robust logging, rate limiting, and audit functionalities, enabling monitoring of remote LLM usage, inference costs, and inspection of queries/responses for debugging or legal purposes.
 
@@ -18,14 +18,14 @@ A Model Context Protocol (MCP) server wrapper designed to facilitate seamless in
 This project relies on the following key dependencies:
 
 ### Core Dependencies:
-*   `fastapi`: A modern, fast (high-performance) web framework for building APIs with Python 3.7+.
-*   `uvicorn`: An ASGI server, used to run FastAPI applications.
 *   `pydantic`: Data validation and settings management using Python type hints.
 *   `pydantic-settings`: Pydantic's settings management for environment variables and configuration.
 *   `python-dotenv`: Reads key-value pairs from a `.env` file and sets them as environment variables.
 *   `requests`: An elegant and simple HTTP library for Python.
 *   `tiktoken`: A fast BPE tokeniser for use with OpenAI's models.
-*   `llm-accounting`: For robust logging, rate limiting, and audit functionalities, enabling monitoring of remote LLM usage, inference costs, and inspection of queries/responses for debugging or legal purposes.
+*   `llm-accounting`: For robust logging, rate limiting, and audit functionalities.
+
+*(Note: `fastapi` and `uvicorn` have been removed as the primary server is STDIO-based. If these are used for other utilities within the project, they should be re-added with clarification.)*
 
 ### Development Dependencies:
 *   `pytest`: A mature full-featured Python testing framework.
@@ -57,17 +57,17 @@ pip install -e .
 
 ## Configuration
 
-Create a `.env` file in the project root with the following variables:
+Create a `.env` file in the project root with the following variable:
 
 ```env
 OPENROUTER_API_KEY=your_openrouter_api_key_here
-# Optional: Override default model
-OPENROUTER_MODEL=your_preferred_model
 ```
 
-The server is configured to use OpenRouter by default with the following settings:
-- API Base URL: https://openrouter.ai/api/v1
-- Default Model: perplexity/llama-3.1-sonar-small-128k-online
+The server is configured to use OpenRouter by default. The API key is loaded from the `OPENROUTER_API_KEY` environment variable. The specific LLM model and API base URL are primarily configured via command-line arguments when running the server (see below).
+
+Default settings if not overridden by CLI arguments:
+- API Base URL for LLMClient: https://openrouter.ai/api/v1 (can be overridden by `LLM_API_BASE_URL` env var or `--llm-api-base-url` CLI arg)
+- Default Model for LLMClient: perplexity/llama-3.1-sonar-small-128k-online (can be overridden by `--model` CLI arg)
 
 ## Usage
 
@@ -76,20 +76,27 @@ The server is configured to use OpenRouter by default with the following setting
 To run the server, execute the following command:
 
 ```bash
-python -m llm_wrapper_mcp_server
+python -m llm_wrapper_mcp_server [OPTIONS]
 ```
+For example:
+```bash
+python -m llm_wrapper_mcp_server --model your-org/your-model-name --log-level DEBUG
+```
+Run `python -m llm_wrapper_mcp_server --help` to see all available command-line options for configuring the server.
 
-This server operates as a Model Context Protocol (MCP) STDIO server, communicating via standard input and output. It does not open a network port.
+This server operates as a Model Context Protocol (MCP) STDIO server, communicating via standard input and output. It does not open a network port for MCP communication.
 
 ### MCP Communication
 
 The server communicates using JSON-RPC messages over `stdin` and `stdout`. It supports the following MCP methods:
 
 - `initialize`: Handshake to establish protocol version and server capabilities.
-- `tools/list`: Lists available tools.
+- `tools/list`: Lists available tools. The main server provides an `llm_call` tool.
 - `tools/call`: Executes a specified tool.
-- `resources/list`: Lists available resources.
-- `resources/templates/list`: Lists available resource templates.
+- `resources/list`: Lists available resources (currently none).
+- `resources/templates/list`: Lists available resource templates (currently none).
+
+The `llm_call` tool takes `prompt` (string, required) and optionally `model` (string) as arguments to allow per-call model overrides if the specified model is permitted.
 
 ### Client Interaction Example (Python)
 
@@ -117,7 +124,7 @@ if __name__ == "__main__":
     # Start the MCP server as a subprocess
     # Ensure you have the virtual environment activated or the package installed globally
     server_process = subprocess.Popen(
-        ["python", "-m", "llm_wrapper_mcp_server"],
+        ["python", "-m", "llm_wrapper_mcp_server"], # Add any CLI args here if needed
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, # Capture stderr for debugging
@@ -150,6 +157,7 @@ if __name__ == "__main__":
             "name": "llm_call",
             "arguments": {
                 "prompt": "What is the capital of France?"
+                # Optionally add: "model": "another-model/if-allowed"
             }
         }
     }
@@ -170,28 +178,6 @@ if __name__ == "__main__":
     print("\\nServer process terminated.")
 ```
 
-### CLI Mode Usage
-
-The `llm-wrapper-mcp-server` can also be used directly from the command line for quick interactions or testing.
-
-**Basic Query:**
-
-```bash
-python -m llm_wrapper_mcp_server --query "Tell me a short story about a robot."
-```
-
-**Query with Model Specification:**
-
-```bash
-python -m llm_wrapper_mcp_server --query "What is the square root of 144?" --model "perplexity/llama-3.1-sonar-small-128k-online"
-```
-
-**Query with Tool Call (if configured):**
-
-```bash
-python -m llm_wrapper_mcp_server --query "Calculate 15 * 3." --tool "calculator" --tool-args '{"expression": "15 * 3"}'
-```
-
 ## Ask Online Question MCP Server (Reference Implementation)
 
 This project includes a reference implementation of a custom MCP server named "Ask Online Question". This server demonstrates how to build a specialized MCP server on top of the `llm-wrapper-mcp-server` foundation. For detailed information on its features, usage, and how to integrate it with your agent, please refer to its dedicated README: [src/ask_online_question_mcp_server/README.md](src/ask_online_question_mcp_server/README.md).
@@ -209,3 +195,4 @@ pip install -e ".[dev]"
 ## License
 
 MIT License
+```

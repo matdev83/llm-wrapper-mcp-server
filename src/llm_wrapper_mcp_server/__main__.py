@@ -81,6 +81,11 @@ def main() -> None:
         help="Skip accounting for LLM usage"
     )
     parser.add_argument(
+        "--skip-outbound-key-leaks",
+        action="store_true",
+        help="Skip checks for outbound API key leaks in prompts (default: False)"
+    )
+    parser.add_argument(
         "--max-tokens",
         type=int,
         help="Maximum number of tokens to generate in the LLM response"
@@ -133,6 +138,7 @@ def main() -> None:
         model=args.model,
         llm_api_base_url=args.llm_api_base_url,
         skip_accounting=args.skip_accounting,
+        skip_outbound_key_checks=args.skip_outbound_key_leaks, # Pass the new argument
         max_tokens=args.max_tokens,
         server_name=args.server_name,
         server_description=args.server_description

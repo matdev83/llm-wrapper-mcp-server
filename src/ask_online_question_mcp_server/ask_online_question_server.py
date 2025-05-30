@@ -1,10 +1,11 @@
-import json
-import sys
-import os
-from typing import Any, Dict, Optional
-from llm_wrapper_mcp_server.logger import get_logger
-from llm_wrapper_mcp_server.llm_client import LLMClient
 import argparse
+import json
+import os
+import sys
+from typing import Any, Dict, Optional
+
+from llm_wrapper_mcp_server.llm_client import LLMClient
+from llm_wrapper_mcp_server.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -133,9 +134,9 @@ class AskOnlineQuestionServer:
                         "jsonrpc": "2.0",
                         "id": request_id,
                         "error": {
-                            "code": -32000,
+                            "code": -32000, # Or MCP_ERROR_INTERNAL if constants were added
                             "message": "Internal error",
-                            "data": str(e)
+                            "data": "Internal server error. Check server logs for details."
                         },
                         "isError": True
                     })
@@ -184,9 +185,10 @@ class AskOnlineQuestionServer:
             }
         })
         logger.debug("Initial capabilities sent. Entering main request loop.")
-        try:
-            while True:
-                line = sys.stdin.readline()
+        try: # Outer try for the finally block
+            try: # Inner try for the request loop
+                while True:
+                    line = sys.stdin.readline()
                 if not line:
                     logger.info("Empty line or EOF received from stdin. Breaking loop.")
                     break
@@ -210,14 +212,18 @@ class AskOnlineQuestionServer:
                         "jsonrpc": "2.0",
                         "id": None,
                         "error": {
-                            "code": -32000,
+                            "code": -32000, # Or MCP_ERROR_INTERNAL if constants were added
                             "message": "Internal error",
-                            "data": str(e)
+                            "data": "Internal server error. Check server logs for details."
                         }
                     })
         except Exception as e:
             logger.critical(f"Fatal error in AskOnlineQuestionServer run loop: {e}")
             raise
+        finally:
+            logger.debug("Ensuring LLMClient resources are closed.")
+            if hasattr(self, 'llm_client') and self.llm_client:
+                self.llm_client.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ask Online Question MCP Server")

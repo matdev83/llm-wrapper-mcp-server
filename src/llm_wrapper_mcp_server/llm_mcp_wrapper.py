@@ -2,12 +2,14 @@
 STDIO-based MCP server implementation.
 """
 import json
-import sys
 import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from .logger import get_logger
+
 import requests.exceptions # Import requests.exceptions
+
+from .logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -263,11 +265,11 @@ class LLMMCPWrapper:
                     tb = traceback.format_exc()
                     
                     error_message = f"Internal error: {str(e)}"
-                    if isinstance(e, requests.exceptions.Timeout):
+                    if isinstance(e, requests.Timeout):
                         error_message = "LLM call timed out."
-                    elif isinstance(e, requests.exceptions.HTTPError):
+                    elif isinstance(e, requests.HTTPError):
                         error_message = f"LLM API HTTP error: {e.response.status_code} {e.response.reason}"
-                    elif isinstance(e, requests.exceptions.RequestException):
+                    elif isinstance(e, requests.RequestException):
                         error_message = f"LLM API network error: {str(e)}"
                     elif isinstance(e, RuntimeError):
                         # Catch specific RuntimeErrors from LLMClient
@@ -283,9 +285,9 @@ class LLMMCPWrapper:
                         "jsonrpc": "2.0",
                         "id": request_id,
                         "error": {
-                            "code": -32000,
+                            "code": -32000, # Or MCP_ERROR_INTERNAL if constants were added
                             "message": error_message,
-                            "data": str(tb) # Ensure data is always a string
+                            "data": "Internal server error. Check server logs for details."
                         },
                         "isError": True # Set isError to True for error responses
                     })
@@ -400,9 +402,9 @@ class LLMMCPWrapper:
                         "jsonrpc": "2.0",
                         "id": None,
                         "error": {
-                            "code": -32000,
+                    "code": -32000, # Or MCP_ERROR_INTERNAL if constants were added
                             "message": "Internal error",
-                            "data": str(e) # Ensure data is always a string
+                    "data": "Internal server error. Check server logs for details."
                         }
                     })
         except Exception as e:
