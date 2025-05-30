@@ -33,6 +33,22 @@ You can override the default model (`perplexity/llama-3.1-sonar-small-128k-onlin
 python -m src.ask_online_question_mcp_server --model "your_custom_model_name" --llm-api-base-url https://api.openrouter.ai/api/v1
 ```
 
+### Recommended Models
+
+This server is optimized for use with Perplexity's Sonar models, which offer excellent performance for factual queries.
+
+*   **Default Model:** `perplexity/llama-3.1-sonar-small-128k-online`
+    This model is suitable for most general questions and provides a good balance of speed and accuracy.
+
+*   **For Complex Queries:** `perplexity/llama-3.1-sonar-large-128k-online`
+    For more complex questions, queries that may generate longer output, or tasks requiring interpretation, rephrasing, or reformatting, it is highly recommended to use the `sonar-large` variant. The smaller `sonar-small` model may sometimes hallucinate or provide less accurate results in such scenarios.
+
+    To run the MCP server configured with the larger Sonar model:
+
+    ```bash
+    python -m src.ask_online_question_mcp_server --model perplexity/llama-3.1-sonar-large-128k-online --llm-api-base-url https://api.openrouter.ai/api/v1
+    ```
+
 **Specifying a Custom System Prompt:**
 
 The system prompt defaults to `config/prompts/system.txt`. You can provide a different system prompt file using the `--system-prompt-path` argument:
@@ -53,7 +69,7 @@ An MCP client would interact with this server by calling the `ask_online_questio
   "params": {
     "name": "ask_online_question",
     "arguments": {
-      "prompt": "What is the capital of Canada?"
+      "prompt": "What's the weather today in Berlin?"
     }
   }
 }

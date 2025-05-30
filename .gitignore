@@ -105,3 +105,4 @@ data/
 build.bat
 release_orchestrator.py
 version_manager.py
+commit_message.txt

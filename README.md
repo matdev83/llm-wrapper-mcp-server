@@ -192,6 +192,24 @@ This project also includes a specialized MCP server for online LLM queries, prov
 
 For a detailed overview of the project's directory and file structure, refer to [docs/STRUCTURE.md](docs/STRUCTURE.md). This document is useful for understanding the codebase during development.
 
+### Running Tests
+
+This project uses `pytest` for testing.
+
+To run all unit tests:
+
+```bash
+pytest
+```
+
+Integration tests are disabled by default to avoid making external API calls during normal test runs. To include and run integration tests, use the `integration` marker:
+
+```bash
+pytest -m integration
+```
+
+### Install Development Dependencies
+
 Install development dependencies:
 
 ```bash
