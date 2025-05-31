@@ -75,10 +75,24 @@ def main() -> None:
         default=100,
         help="Maximum allowed tokens in user prompt (default: 100)"
     )
+    # --skip-accounting is removed
     parser.add_argument(
-        "--skip-accounting",
-        action="store_true",
-        help="Skip accounting for LLM usage"
+        "--disable-logging",
+        action='store_false',
+        dest='enable_logging',
+        help="Disable LLM usage logging (会计)."
+    )
+    parser.add_argument(
+        "--disable-rate-limiting",
+        action='store_false',
+        dest='enable_rate_limiting',
+        help="Disable rate limiting (currently a placeholder)."
+    )
+    parser.add_argument(
+        "--disable-audit-log",
+        action='store_false',
+        dest='enable_audit_log',
+        help="Disable audit logging of prompts and replies."
     )
     parser.add_argument(
         "--skip-outbound-key-leaks",
@@ -137,7 +151,9 @@ def main() -> None:
         system_prompt_path=args.system_prompt_file,
         model=args.model,
         llm_api_base_url=args.llm_api_base_url,
-        skip_accounting=args.skip_accounting,
+        enable_logging=args.enable_logging,
+        enable_rate_limiting=args.enable_rate_limiting,
+        enable_audit_log=args.enable_audit_log,
         skip_outbound_key_checks=args.skip_outbound_key_leaks, # Pass the new argument
         max_tokens=args.max_tokens,
         server_name=args.server_name,
