@@ -89,9 +89,9 @@ def test_successful_response(mock_post, client): # client fixture already handle
     assert response["input_tokens"] == len(client.encoder.encode(client.system_prompt)) + len(client.encoder.encode("Test prompt"))
     assert response["api_usage"]["total_cost"] == "0.05"
 
-@patch(LOGGER_WARNING_PATH) # Mock logger.warning from llm_client module
 @patch(OS_GETENV_PATH, return_value="sk-valid-test-key-1234567890abcdef")
-def test_api_key_redaction(mock_logger_warning, mock_env): # Added mock_env
+@patch(LOGGER_WARNING_PATH) # Mock logger.warning from llm_client module
+def test_api_key_redaction(mock_logger_warning, mock_getenv, mock_env): # Added mock_env, mock_getenv
     # Instantiate client with redaction enabled (default)
     client = LLMClient(system_prompt_path=DUMMY_SYSTEM_PROMPT_PATH, skip_outbound_key_checks=False)
     assert client.api_key is not None

@@ -251,54 +251,59 @@ def test_ask_cli_all_disabled(MockedAskServerInMain, monkeypatch, capsys):
 # --- Existing Tests (adapted to use ask_server_fixture and clearer capsys handling) ---
 
 def test_ask_server_initialize(ask_server_fixture, capsys):
+    server, _ = ask_server_fixture # Unpack the fixture
     get_response_from_ask_mock(capsys) # Clear initial server ready notification if any (depends on run)
     request = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
-    ask_server_fixture.handle_request(request)
+    server.handle_request(request)
     response = get_response_from_ask_mock(capsys)
     assert response is not None
     assert response["id"] == 1
     assert response["result"]["serverInfo"]["name"] == "Ask Online Question"
 
 def test_ask_server_tools_list(ask_server_fixture, capsys):
+    server, _ = ask_server_fixture # Unpack the fixture
     get_response_from_ask_mock(capsys)
     request = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
-    ask_server_fixture.handle_request(request)
+    server.handle_request(request)
     response = get_response_from_ask_mock(capsys)
     assert response is not None
     assert "ask_online_question" in response["result"]["tools"]
 
 def test_ask_server_tool_call_success(ask_server_fixture, capsys):
+    server, _ = ask_server_fixture # Unpack the fixture
     get_response_from_ask_mock(capsys)
     request = {
         "jsonrpc": "2.0", "id": 3, "method": "tools/call",
         "params": {"name": "ask_online_question", "arguments": {"prompt": "What is pytest?"}}
     }
-    ask_server_fixture.handle_request(request)
+    server.handle_request(request)
     response = get_response_from_ask_mock(capsys)
     assert response is not None
     assert response["result"]["content"][0]["text"] == "Mocked online question LLM response"
     assert response["result"]["isError"] is False
-    ask_server_fixture.llm_client.generate_response.assert_called_once_with(prompt="What is pytest?")
+    server.llm_client.generate_response.assert_called_once_with(prompt="What is pytest?")
 
 def test_ask_server_tool_call_missing_prompt(ask_server_fixture, capsys):
+    server, _ = ask_server_fixture # Unpack the fixture
     get_response_from_ask_mock(capsys)
     request = {
         "jsonrpc": "2.0", "id": 4, "method": "tools/call",
         "params": {"name": "ask_online_question", "arguments": {}}
     }
-    ask_server_fixture.handle_request(request)
+    server.handle_request(request)
     response = get_response_from_ask_mock(capsys)
     assert response is not None
     assert response["error"]["message"] == "Invalid params"
     assert "Missing required 'prompt' argument" in response["error"]["data"]
 
 def test_ask_server_unknown_tool(ask_server_fixture, capsys):
+    server, _ = ask_server_fixture # Unpack the fixture
     get_response_from_ask_mock(capsys)
     request = {
         "jsonrpc": "2.0", "id": 5, "method": "tools/call",
         "params": {"name": "unknown_tool", "arguments": {"prompt": "test"}}
     }
-    ask_server_fixture.handle_request(request)
+    server.handle_request(request)
     response = get_response_from_ask_mock(capsys)
     assert response is not None
     assert response["error"]["message"] == "Method not found"
@@ -306,19 +311,20 @@ def test_ask_server_unknown_tool(ask_server_fixture, capsys):
 
 @patch('ask_online_question_mcp_server.ask_online_question_server.sys.stdin')
 def test_ask_server_run_loop_and_client_close(mock_stdin, ask_server_fixture, capsys):
+    server, _ = ask_server_fixture # Unpack the fixture
     # Server sends initial ready on run, then we send one request, then EOF.
     mock_stdin.readline.side_effect = [
         json.dumps({"jsonrpc": "2.0", "id": 100, "method": "initialize", "params": {}}) + '\n',
         ""  # EOF
     ]
     # Mock the close method on the llm_client *instance* from the fixture
-    ask_server_fixture.llm_client.close = MagicMock()
+    server.llm_client.close = MagicMock()
 
-    ask_server_fixture.run() # Call run on the instance from the fixture
+    server.run() # Call run on the instance from the fixture
 
     # Verify close was called.
     # The llm_client instance on ask_server_fixture is the one we want to check.
-    ask_server_fixture.llm_client.close.assert_called_once()
+    server.llm_client.close.assert_called_once()
 
     # Clear the initial server ready message and the response to initialize
     get_response_from_ask_mock(capsys)
