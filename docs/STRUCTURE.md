@@ -5,7 +5,6 @@ This document outlines the directory and file structure of the `llm-wrapper-mcp-
 ```
 .
 ├── .gitignore
-├── CHANGELOG.md
 ├── LICENSE
 ├── pyproject.toml
 ├── README.md
@@ -61,7 +60,6 @@ This document outlines the directory and file structure of the `llm-wrapper-mcp-
 ### Key File Descriptions:
 
 *   `.gitignore`: Specifies intentionally untracked files to ignore by Git.
-*   `CHANGELOG.md`: Documents all notable changes to the project.
 *   `LICENSE`: Contains the licensing information for the project.
 *   `pyproject.toml`: Project configuration file, including build system and dependencies.
 *   `README.md`: Provides a general overview of the project, setup instructions, and usage.
