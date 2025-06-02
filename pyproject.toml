@@ -47,8 +47,5 @@ packages = ["src/llm_wrapper_mcp_server"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["-v", "--import-mode=importlib"]
-<<<<<<< HEAD
-pythonpath = [".", "src"]
-=======
 pythonpath = [".", "src"]
 markers = ["integration: marks tests as integration tests"]
