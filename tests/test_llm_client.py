@@ -1,6 +1,7 @@
 import os
 import pytest
 import requests
+import logging # Add this line
 from unittest.mock import patch, Mock, MagicMock # Added MagicMock
 from src.llm_wrapper_mcp_server.llm_client import LLMClient, logger, ApiKeyFilter
 
@@ -91,7 +92,8 @@ def test_successful_response(mock_post, client): # client fixture already handle
 # --- More existing tests would follow here ---
 # For brevity, I'm omitting them in this thought block but they will be in the final file.
 
-def test_api_key_redaction(caplog, mock_env): # Added mock_env
+@patch(LOGGER_WARNING_PATH) # Mock logger.warning from llm_client module
+def test_api_key_redaction(mock_logger_warning, mock_env): # Added mock_env
     with patch(OS_GETENV_PATH, return_value="sk-valid-test-key-1234567890abcdef"):
         client = LLMClient(system_prompt_path=DUMMY_SYSTEM_PROMPT_PATH)
     assert client.api_key is not None
@@ -100,7 +102,14 @@ def test_api_key_redaction(caplog, mock_env): # Added mock_env
 
     assert "(API key redacted due to security reasons)" in redacted
     assert client.api_key not in redacted
-    assert "Redacting API key" in caplog.text
+    
+    # Expect two warning calls: one for rate limiting, one for redaction
+    from unittest.mock import call
+    expected_calls = [
+        call("Rate limiting is enabled but not yet implemented in LLMClient."),
+        call("Redacting API key from response content")
+    ]
+    mock_logger_warning.assert_has_calls(expected_calls, any_order=True)
 
 def test_response_redaction_disabled(client): # client fixture handles env
     assert client.api_key is not None

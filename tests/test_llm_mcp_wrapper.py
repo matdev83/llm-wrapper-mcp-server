@@ -11,19 +11,11 @@ import io
 # Path to LLMClient where it's imported in llm_mcp_wrapper.py
 WRAPPER_LLMCLIENT_PATH = 'llm_wrapper_mcp_server.llm_mcp_wrapper.LLMClient'
 # Path to LLMMCPWrapper where it's imported in __main__.py
-MAIN_LLMMCPWRAPPER_PATH = "src.llm_wrapper_mcp_server.__main__.LLMMCPWrapper"
+MAIN_LLMMCPWRAPPER_PATH = "llm_wrapper_mcp_server.llm_mcp_wrapper.LLMMCPWrapper"
 
 
 @pytest.fixture
-def mock_stdout_global(monkeypatch): # Renamed to avoid conflict if a test-local one is needed
-    """Mocks sys.stdout for the duration of a test."""
-    original_stdout = sys.stdout
-    sys.stdout = io.StringIO()
-    yield sys.stdout
-    sys.stdout = original_stdout # Restore original stdout
-
-@pytest.fixture
-def mcp_wrapper_fixture(mock_stdout_global): # Renamed to avoid direct use where specific mock is needed
+def mcp_wrapper_fixture(capsys): # Add capsys here
     # This fixture provides a basic LLMMCPWrapper with a mocked LLMClient
     # for tests that don't need to assert calls to LLMClient constructor.
     with patch(WRAPPER_LLMCLIENT_PATH) as MockLLMClient:
@@ -47,20 +39,14 @@ def mcp_wrapper_fixture(mock_stdout_global): # Renamed to avoid direct use where
             enable_audit_log=True
         )
         # Attach the mock for LLMClient constructor to the wrapper instance for potential inspection
-        wrapper.MockLLMClient = MockLLMClient
         yield wrapper
 
 
-def get_response_from_mock(mock_stdout):
-    content = mock_stdout.getvalue()
+def get_response_from_mock(capsys): # Change parameter to capsys
+    captured = capsys.readouterr()
+    content = captured.out
     if not content.strip():
-        # Clear it for next potential write if we assert no output
-        mock_stdout.seek(0)
-        mock_stdout.truncate(0)
         return None
-    # Clear after reading
-    mock_stdout.seek(0)
-    mock_stdout.truncate(0)
     # Ensure we only parse once if multiple lines are present (take the last one)
     lines = content.strip().split('\n')
     return json.loads(lines[-1])
@@ -69,7 +55,7 @@ def get_response_from_mock(mock_stdout):
 # --- Programmatic Control Tests for LLMMCPWrapper ---
 
 @patch(WRAPPER_LLMCLIENT_PATH)
-def test_wrapper_programmatic_defaults(MockLLMClient_constructor, mock_stdout_global):
+def test_wrapper_programmatic_defaults(MockLLMClient_constructor, capsys): # Change parameter to capsys
     LLMMCPWrapper() # Rely on default params
     args, kwargs = MockLLMClient_constructor.call_args
     assert kwargs.get('enable_logging') is True
@@ -77,7 +63,7 @@ def test_wrapper_programmatic_defaults(MockLLMClient_constructor, mock_stdout_gl
     assert kwargs.get('enable_rate_limiting') is True
 
 @patch(WRAPPER_LLMCLIENT_PATH)
-def test_wrapper_programmatic_disable_logging(MockLLMClient_constructor, mock_stdout_global):
+def test_wrapper_programmatic_disable_logging(MockLLMClient_constructor, capsys): # Change parameter to capsys
     LLMMCPWrapper(enable_logging=False)
     args, kwargs = MockLLMClient_constructor.call_args
     assert kwargs.get('enable_logging') is False
@@ -85,7 +71,7 @@ def test_wrapper_programmatic_disable_logging(MockLLMClient_constructor, mock_st
     assert kwargs.get('enable_rate_limiting') is True
 
 @patch(WRAPPER_LLMCLIENT_PATH)
-def test_wrapper_programmatic_disable_audit_log(MockLLMClient_constructor, mock_stdout_global):
+def test_wrapper_programmatic_disable_audit_log(MockLLMClient_constructor, capsys): # Change parameter to capsys
     LLMMCPWrapper(enable_audit_log=False)
     args, kwargs = MockLLMClient_constructor.call_args
     assert kwargs.get('enable_logging') is True
@@ -93,7 +79,7 @@ def test_wrapper_programmatic_disable_audit_log(MockLLMClient_constructor, mock_
     assert kwargs.get('enable_rate_limiting') is True
 
 @patch(WRAPPER_LLMCLIENT_PATH)
-def test_wrapper_programmatic_disable_rate_limiting(MockLLMClient_constructor, mock_stdout_global):
+def test_wrapper_programmatic_disable_rate_limiting(MockLLMClient_constructor, capsys): # Change parameter to capsys
     LLMMCPWrapper(enable_rate_limiting=False)
     args, kwargs = MockLLMClient_constructor.call_args
     assert kwargs.get('enable_logging') is True
@@ -101,7 +87,7 @@ def test_wrapper_programmatic_disable_rate_limiting(MockLLMClient_constructor, m
     assert kwargs.get('enable_rate_limiting') is False
 
 @patch(WRAPPER_LLMCLIENT_PATH)
-def test_wrapper_programmatic_all_disabled(MockLLMClient_constructor, mock_stdout_global):
+def test_wrapper_programmatic_all_disabled(MockLLMClient_constructor, capsys): # Change parameter to capsys
     LLMMCPWrapper(enable_logging=False, enable_audit_log=False, enable_rate_limiting=False)
     args, kwargs = MockLLMClient_constructor.call_args
     assert kwargs.get('enable_logging') is False
@@ -109,7 +95,7 @@ def test_wrapper_programmatic_all_disabled(MockLLMClient_constructor, mock_stdou
     assert kwargs.get('enable_rate_limiting') is False
 
 @patch(WRAPPER_LLMCLIENT_PATH)
-def test_wrapper_temp_client_inherits_flags(MockLLMClient_constructor, mock_stdout_global):
+def test_wrapper_temp_client_inherits_flags(MockLLMClient_constructor, capsys): # Change parameter to capsys
     # Setup main client mock part
     main_client_instance = MockLLMClient_constructor.return_value
     main_client_instance.encoder.encode.return_value = [1,2,3] # for token counting
@@ -173,8 +159,9 @@ def test_wrapper_temp_client_inherits_flags(MockLLMClient_constructor, mock_stdo
 
 # --- CLI Control Tests ---
 
-@patch(MAIN_LLMMCPWRAPPER_PATH) # Mock LLMMCPWrapper in __main__
-def test_main_cli_defaults(MockedMCPWrapperInMain, monkeypatch, mock_stdout_global):
+@patch('llm_wrapper_mcp_server.llm_mcp_wrapper.LLMMCPWrapper') # Mock LLMMCPWrapper directly
+def test_main_cli_defaults(MockedMCPWrapperInMain, monkeypatch, capsys):
+    capsys.readouterr() # Clear any previous output
     monkeypatch.setattr(sys, 'argv', ['__main__.py'])
     # Mock the .run() method to prevent the server from actually running
     MockedMCPWrapperInMain.return_value.run = MagicMock()
@@ -185,8 +172,9 @@ def test_main_cli_defaults(MockedMCPWrapperInMain, monkeypatch, mock_stdout_glob
     assert kwargs.get('enable_audit_log') is True
     assert kwargs.get('enable_rate_limiting') is True
 
-@patch(MAIN_LLMMCPWRAPPER_PATH)
-def test_main_cli_disable_logging(MockedMCPWrapperInMain, monkeypatch, mock_stdout_global):
+@patch('llm_wrapper_mcp_server.llm_mcp_wrapper.LLMMCPWrapper')
+def test_main_cli_disable_logging(MockedMCPWrapperInMain, monkeypatch, capsys):
+    capsys.readouterr() # Clear any previous output
     monkeypatch.setattr(sys, 'argv', ['__main__.py', '--disable-logging'])
     MockedMCPWrapperInMain.return_value.run = MagicMock()
     llm_wrapper_main()
@@ -195,8 +183,9 @@ def test_main_cli_disable_logging(MockedMCPWrapperInMain, monkeypatch, mock_stdo
     assert kwargs.get('enable_audit_log') is True
     assert kwargs.get('enable_rate_limiting') is True
 
-@patch(MAIN_LLMMCPWRAPPER_PATH)
-def test_main_cli_disable_audit_log(MockedMCPWrapperInMain, monkeypatch, mock_stdout_global):
+@patch('llm_wrapper_mcp_server.llm_mcp_wrapper.LLMMCPWrapper')
+def test_main_cli_disable_audit_log(MockedMCPWrapperInMain, monkeypatch, capsys):
+    capsys.readouterr() # Clear any previous output
     monkeypatch.setattr(sys, 'argv', ['__main__.py', '--disable-audit-log'])
     MockedMCPWrapperInMain.return_value.run = MagicMock()
     llm_wrapper_main()
@@ -205,8 +194,9 @@ def test_main_cli_disable_audit_log(MockedMCPWrapperInMain, monkeypatch, mock_st
     assert kwargs.get('enable_audit_log') is False
     assert kwargs.get('enable_rate_limiting') is True
 
-@patch(MAIN_LLMMCPWRAPPER_PATH)
-def test_main_cli_disable_rate_limiting(MockedMCPWrapperInMain, monkeypatch, mock_stdout_global):
+@patch('llm_wrapper_mcp_server.llm_mcp_wrapper.LLMMCPWrapper')
+def test_main_cli_disable_rate_limiting(MockedMCPWrapperInMain, monkeypatch, capsys):
+    capsys.readouterr() # Clear any previous output
     monkeypatch.setattr(sys, 'argv', ['__main__.py', '--disable-rate-limiting'])
     MockedMCPWrapperInMain.return_value.run = MagicMock()
     llm_wrapper_main()
@@ -215,8 +205,9 @@ def test_main_cli_disable_rate_limiting(MockedMCPWrapperInMain, monkeypatch, moc
     assert kwargs.get('enable_audit_log') is True
     assert kwargs.get('enable_rate_limiting') is False
 
-@patch(MAIN_LLMMCPWRAPPER_PATH)
-def test_main_cli_all_disabled(MockedMCPWrapperInMain, monkeypatch, mock_stdout_global):
+@patch('llm_wrapper_mcp_server.llm_mcp_wrapper.LLMMCPWrapper')
+def test_main_cli_all_disabled(MockedMCPWrapperInMain, monkeypatch, capsys):
+    capsys.readouterr() # Clear any previous output
     monkeypatch.setattr(sys, 'argv', [
         '__main__.py',
         '--disable-logging',
@@ -234,32 +225,125 @@ def test_main_cli_all_disabled(MockedMCPWrapperInMain, monkeypatch, mock_stdout_
 # --- Existing tests (ensure they still pass or adapt them) ---
 # The mcp_wrapper_fixture has been updated to use new flags with True defaults.
 
-def test_initialize_request(mcp_wrapper_fixture, mock_stdout_global):
+def test_initialize_request(mcp_wrapper_fixture, capsys):
+    capsys.readouterr() # Clear any previous output
     mcp_wrapper_fixture.handle_request({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
-    response = get_response_from_mock(mock_stdout_global)
+    response = get_response_from_mock(capsys)
+    assert response is not None # Add check for None
     assert response["id"] == 1
     assert "serverInfo" in response["result"]
 
-def test_tools_list_request(mcp_wrapper_fixture, mock_stdout_global):
+def test_tools_list_request(mcp_wrapper_fixture, capsys):
+    capsys.readouterr() # Clear any previous output
     mcp_wrapper_fixture.handle_request({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
-    response = get_response_from_mock(mock_stdout_global)
+    response = get_response_from_mock(capsys)
+    assert response is not None # Add check for None
     assert response["id"] == 2
     assert "llm_call" in response["result"]["tools"]
 
-def test_tools_call_llm_call_success(mcp_wrapper_fixture, mock_stdout_global):
+def test_tools_call_llm_call_success(mcp_wrapper_fixture, capsys):
+    capsys.readouterr() # Clear any previous output
     request = {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "llm_call", "arguments": {"prompt": "Hello, LLM!"}}}
     mcp_wrapper_fixture.handle_request(request)
-    response = get_response_from_mock(mock_stdout_global)
+    response = get_response_from_mock(capsys)
+    assert response is not None # Add check for None
     assert response["id"] == 3
     assert response["result"]["content"][0]["text"] == "Mocked LLM response"
 
-# ... (other existing tests should be here and checked for compatibility)
-# For brevity, I'll assume they are compatible or would be adapted similarly if issues arose.
-# The main change for them is that mcp_wrapper_fixture now sets enable_logging=True, etc.
-# instead of skip_accounting=True. Since LLMClient is fully mocked in that fixture,
-# the internal behavior of LLMClient regarding these flags doesn't affect these MCP-level tests.
+# Add capsys.readouterr() and assert response is not None for other tests that use get_response_from_mock
+def test_tools_call_llm_call_missing_prompt(mcp_wrapper_fixture, capsys):
+    capsys.readouterr()
+    request = {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "tools/call",
+        "params": {
+            "name": "llm_call",
+            "arguments": {}
+        }
+    }
+    mcp_wrapper_fixture.handle_request(request)
+    response = get_response_from_mock(capsys)
+    assert response is not None
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] == 4
+    assert "error" in response
+    assert response["error"]["message"] == "Invalid params"
+    assert response["error"]["data"] == "Missing required 'prompt' argument"
 
-def test_prompt_exceeds_max_tokens(mcp_wrapper_fixture, mock_stdout_global):
+def test_tools_call_unknown_tool(mcp_wrapper_fixture, capsys):
+    capsys.readouterr()
+    request = {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "tools/call",
+        "params": {
+            "name": "unknown_tool",
+            "arguments": {}
+        }
+    }
+    mcp_wrapper_fixture.handle_request(request)
+    response = get_response_from_mock(capsys)
+    assert response is not None
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] == 5
+    assert "error" in response
+    assert response["error"]["message"] == "Method not found"
+    assert response["error"]["data"] == "Tool 'unknown_tool' not found"
+
+def test_resources_list_request(mcp_wrapper_fixture, capsys):
+    capsys.readouterr()
+    request = {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "method": "resources/list",
+        "params": {}
+    }
+    mcp_wrapper_fixture.handle_request(request)
+    response = get_response_from_mock(capsys)
+    assert response is not None
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] == 6
+    assert "result" in response
+    assert "resources" in response["result"]
+    assert response["result"]["resources"] == {}
+
+def test_resources_templates_list_request(mcp_wrapper_fixture, capsys):
+    capsys.readouterr()
+    request = {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "resources/templates/list",
+        "params": {}
+    }
+    mcp_wrapper_fixture.handle_request(request)
+    response = get_response_from_mock(capsys)
+    assert response is not None
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] == 7
+    assert "result" in response
+    assert "templates" in response["result"]
+    assert response["result"]["templates"] == {}
+
+def test_unknown_method(mcp_wrapper_fixture, capsys):
+    capsys.readouterr()
+    request = {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "unknown_method",
+        "params": {}
+    }
+    mcp_wrapper_fixture.handle_request(request)
+    response = get_response_from_mock(capsys)
+    assert response is not None
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] == 8
+    assert "error" in response
+    assert response["error"]["message"] == "Method not found"
+    assert response["error"]["data"] == "Method 'unknown_method' not found"
+
+def test_prompt_exceeds_max_tokens(mcp_wrapper_fixture, capsys):
+    capsys.readouterr()
     # Access the mocked LLMClient instance from the fixture
     mock_llm_client_instance = mcp_wrapper_fixture.llm_client
 
@@ -279,7 +363,77 @@ def test_prompt_exceeds_max_tokens(mcp_wrapper_fixture, mock_stdout_global):
         mcp_wrapper_fixture.handle_request(request)
         mock_encode.assert_called_once_with("This is a very long prompt that will exceed the token limit.")
 
-        response = get_response_from_mock(mock_stdout_global)
+        response = get_response_from_mock(capsys)
+        assert response is not None
         assert response["id"] == 9
         assert "error" in response
         assert f"Prompt exceeds maximum length of {mcp_wrapper_fixture.max_user_prompt_tokens} tokens" in response["error"]["data"]
+
+def test_model_validation_invalid_format(mcp_wrapper_fixture, capsys):
+    capsys.readouterr()
+    request = {
+        "jsonrpc": "2.0",
+        "id": 10,
+        "method": "tools/call",
+        "params": {
+            "name": "llm_call",
+            "arguments": {
+                "prompt": "Test prompt",
+                "model": "invalid_model" # Missing '/'
+            }
+        }
+    }
+    mcp_wrapper_fixture.handle_request(request)
+    response = get_response_from_mock(capsys)
+    assert response is not None
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] == 10
+    assert "error" in response
+    assert response["error"]["message"] == "Invalid model specification"
+    assert "Model name must contain a '/' separator" in response["error"]["data"]
+
+def test_model_validation_empty_parts(mcp_wrapper_fixture, capsys):
+    capsys.readouterr()
+    request = {
+        "jsonrpc": "2.0",
+        "id": 11,
+        "method": "tools/call",
+        "params": {
+            "name": "llm_call",
+            "arguments": {
+                "prompt": "Test prompt",
+                "model": "provider/" # Empty second part
+            }
+        }
+    }
+    mcp_wrapper_fixture.handle_request(request)
+    response = get_response_from_mock(capsys)
+    assert response is not None
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] == 11
+    assert "error" in response
+    assert response["error"]["message"] == "Invalid model specification"
+    assert "Model name must contain a provider and a model separated by a single '/'" in response["error"]["data"]
+
+def test_model_validation_too_short(mcp_wrapper_fixture, capsys):
+    capsys.readouterr()
+    request = {
+        "jsonrpc": "2.0",
+        "id": 12,
+        "method": "tools/call",
+        "params": {
+            "name": "llm_call",
+            "arguments": {
+                "prompt": "Test prompt",
+                "model": "a" # Too short
+            }
+        }
+    }
+    mcp_wrapper_fixture.handle_request(request)
+    response = get_response_from_mock(capsys)
+    assert response is not None
+    assert response["jsonrpc"] == "2.0"
+    assert response["id"] == 12
+    assert "error" in response
+    assert response["error"]["message"] == "Invalid model specification"
+    assert "Model name must be at least 2 characters" in response["error"]["data"]

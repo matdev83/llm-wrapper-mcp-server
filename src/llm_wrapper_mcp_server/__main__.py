@@ -132,20 +132,24 @@ def main() -> None:
 
     # Validate allowed models if specified
     if args.allowed_models_file:
-        if not os.path.exists(args.allowed_models_file):
+        allowed_models = [] # Initialize here
+        if os.path.exists(args.allowed_models_file):
+            with open(args.allowed_models_file, 'r') as f:
+                allowed_models = [line.strip() for line in f if line.strip()]
+        else:
             logger.warning(f"Allowed models file not found: {args.allowed_models_file}")
             sys.exit(1)
 
-        with open(args.allowed_models_file, 'r') as f:
-            allowed_models = [line.strip() for line in f if line.strip()]
-
-        if not allowed_models:
+        # Validate allowed models if populated (only if file existed and was read)
+        if not allowed_models: # This means the file was empty or only whitespace
             logger.warning("Allowed models file is empty - must contain at least one model name")
             sys.exit(1)
 
         if args.model not in allowed_models:
             logger.warning(f"Model '{args.model}' is not in the allowed models list")
             sys.exit(1)
+    else:
+        allowed_models = None # No allowed models file specified
 
     server = LLMMCPWrapper(
         system_prompt_path=args.system_prompt_file,

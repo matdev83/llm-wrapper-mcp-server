@@ -2,6 +2,7 @@ import pytest
 import logging
 import os
 import json
+import sys # Added import for sys
 from unittest.mock import patch, Mock
 from llm_wrapper_mcp_server.__main__ import main
 from llm_wrapper_mcp_server.llm_mcp_wrapper import LLMMCPWrapper # Moved import to top
@@ -24,20 +25,29 @@ def test_valid_model_selection(tmp_path, caplog):
     assert "not in the allowed models list" not in caplog.text
     assert "Allowed models file is empty" not in caplog.text
 
-def test_missing_model_file(tmp_path, caplog):
+def test_missing_model_file(tmp_path, capsys): # Use capsys again
     """Test missing allowed models file handling"""
     missing_file = tmp_path / "missing.txt"
     
     with patch('sys.argv', [
         'server.py',
         '--allowed-models-file', str(missing_file)
-    ]), pytest.raises(SystemExit) as excinfo:
+    ]), patch('llm_wrapper_mcp_server.llm_mcp_wrapper.LLMMCPWrapper.run'), \
+         patch('logging.getLogger') as mock_get_logger, pytest.raises(SystemExit) as excinfo:
+        
+        # Configure the mock logger to write to sys.stderr
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
+        mock_logger.warning.side_effect = lambda msg, *args, **kwargs: print(msg % args, file=sys.stderr)
+        
         main()
     
     assert excinfo.value.code == 1
-    assert f"Allowed models file not found: {missing_file}" in caplog.text
+    outerr = capsys.readouterr()
+    # Check both stdout and stderr as logging might redirect
+    assert f"Allowed models file not found: {missing_file}" in (outerr.err + outerr.out)
 
-def test_empty_model_file(tmp_path, caplog):
+def test_empty_model_file(tmp_path, capsys): # Use capsys again
     """Test empty allowed models file handling"""
     empty_file = tmp_path / "empty.txt"
     empty_file.write_text("\n\n  \n")  # Only whitespace
@@ -45,11 +55,20 @@ def test_empty_model_file(tmp_path, caplog):
     with patch('sys.argv', [
         'server.py',
         '--allowed-models-file', str(empty_file)
-    ]), pytest.raises(SystemExit) as excinfo:
+    ]), patch('sys.stdin.readline', return_value=''), \
+         patch('logging.getLogger') as mock_get_logger, pytest.raises(SystemExit) as excinfo:
+        
+        # Configure the mock logger to write to sys.stderr
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
+        mock_logger.warning.side_effect = lambda msg, *args, **kwargs: print(msg % args, file=sys.stderr)
+        
         main()
     
     assert excinfo.value.code == 1
-    assert "Allowed models file is empty" in caplog.text
+    outerr = capsys.readouterr()
+    # Check both stdout and stderr as logging might redirect
+    assert "Allowed models file is empty" in (outerr.err + outerr.out)
 
 def test_invalid_model_formatting(mocker, caplog):
     """Test various invalid model name formats"""
@@ -112,7 +131,7 @@ def test_invalid_model_formatting(mocker, caplog):
             mock_llm_client_instance.generate_response.assert_not_called()
             mock_llm_client_instance.generate_response.reset_mock() # Reset mock for next iteration
 
-def test_invalid_model_selection(tmp_path, caplog):
+def test_invalid_model_selection(tmp_path, capsys): # Use capsys again
     """Test invalid model not in allowed list"""
     model_file = tmp_path / "models.txt"
     model_file.write_text("allowed/model-1\nallowed/model-2")
@@ -121,8 +140,17 @@ def test_invalid_model_selection(tmp_path, caplog):
         'server.py',
         '--allowed-models-file', str(model_file),
         '--model', 'invalid/model'
-    ]), pytest.raises(SystemExit) as excinfo:
+    ]), patch('sys.stdin.readline', return_value=''), \
+         patch('logging.getLogger') as mock_get_logger, pytest.raises(SystemExit) as excinfo:
+        
+        # Configure the mock logger to write to sys.stderr
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
+        mock_logger.warning.side_effect = lambda msg, *args, **kwargs: print(msg % args, file=sys.stderr)
+        
         main()
     
     assert excinfo.value.code == 1
-    assert "Model 'invalid/model' is not in the allowed models list" in caplog.text
+    outerr = capsys.readouterr()
+    # Check both stdout and stderr as logging might redirect
+    assert "Model 'invalid/model' is not in the allowed models list" in (outerr.err + outerr.out)

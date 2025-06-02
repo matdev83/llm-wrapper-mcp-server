@@ -1,6 +1,6 @@
 import os
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 from llm_wrapper_mcp_server.llm_client import LLMClient
 from llm_wrapper_mcp_server.llm_mcp_wrapper import LLMMCPWrapper
 
@@ -65,7 +65,11 @@ class TestRedactionFunctionality(unittest.TestCase):
         server = LLMMCPWrapper()
         server.llm_client.generate_response("test prompt")
         
-        mock_logger.warning.assert_called_once_with("Redacting API key from response content")
+        expected_calls = [
+            call("Rate limiting is enabled but not yet implemented in LLMClient."),
+            call("Redacting API key from response content")
+        ]
+        mock_logger.warning.assert_has_calls(expected_calls, any_order=True)
 
 if __name__ == '__main__':
     unittest.main()
