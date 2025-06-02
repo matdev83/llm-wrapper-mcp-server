@@ -38,7 +38,6 @@ def mock_dependencies(mocker, monkeypatch):
     mock_logger_instance = MagicMock()
     mock_get_logger.return_value = mock_logger_instance
     
-    # Mock LLMClient within __main__ if it's imported there (it's not, wrapper is)
     # Mock os.path.exists for allowed_models_file if needed for a specific test
     mocker.patch('os.path.exists', return_value=True) # General mock for existence
     mocker.patch('builtins.open', mocker.mock_open(read_data="allowed/model")) # Mock open for allowed_models_file
@@ -74,7 +73,9 @@ def test_main_llm_wrapper_default_args(mock_llm_mcp_wrapper_constructor, mock_de
     
     assert call_args['system_prompt_path'] == "config/prompts/system.txt"
     assert call_args['model'] == "perplexity/llama-3.1-sonar-small-128k-online"
-    assert call_args['skip_accounting'] is False
+    assert call_args['enable_logging'] is True
+    assert call_args['enable_audit_log'] is True
+    assert call_args['enable_rate_limiting'] is True
     assert call_args['skip_outbound_key_checks'] is False # Default from argparse
     assert call_args['server_name'] == "llm-wrapper-mcp-server"
     # max_user_prompt_tokens is part of LLMMCPWrapper's __init__ defaults, not directly from __main__'s default args to constructor
@@ -95,14 +96,15 @@ def test_main_llm_wrapper_custom_args(mock_llm_mcp_wrapper_constructor, mock_dep
         '__main__.py',
         '--model', 'custom/model',
         '--system-prompt-file', 'custom_prompt.txt',
-        '--skip-accounting',
         '--skip-outbound-key-leaks',
         '--server-name', 'MyTestServer',
         '--llm-api-base-url', 'https://custom.api',
         '--log-file', 'custom.log',
         '--log-level', 'DEBUG',
-        '--max-tokens', '500'
-        # Note: --limit-user-prompt-length is parsed by __main__ but not passed to LLMMCPWrapper constructor
+        '--max-tokens', '500',
+        '--disable-logging',
+        '--disable-audit-log',
+        '--disable-rate-limiting'
     ]
     with patch.object(sys, 'argv', test_args):
         llm_wrapper_main()
@@ -111,11 +113,13 @@ def test_main_llm_wrapper_custom_args(mock_llm_mcp_wrapper_constructor, mock_dep
     call_args = mock_constructor.call_args[1]
     assert call_args['model'] == 'custom/model'
     assert call_args['system_prompt_path'] == 'custom_prompt.txt'
-    assert call_args['skip_accounting'] is True
     assert call_args['skip_outbound_key_checks'] is True
     assert call_args['server_name'] == 'MyTestServer'
     assert call_args['llm_api_base_url'] == 'https://custom.api'
     assert call_args['max_tokens'] == 500
+    assert call_args['enable_logging'] is False
+    assert call_args['enable_audit_log'] is False
+    assert call_args['enable_rate_limiting'] is False
     
     mock_instance.run.assert_called_once()
     # Check log configuration based on custom args

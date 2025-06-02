@@ -20,7 +20,10 @@ class AskOnlineQuestionServer:
         system_prompt_path: str = "config/prompts/system.txt",
         llm_api_base_url: Optional[str] = None,
         server_name: str = "Ask Online Question",
-        server_description: str = "MCP server for asking online questions using a fixed LLM model."
+        server_description: str = "MCP server for asking online questions using a fixed LLM model.",
+        enable_logging: bool = True,
+        enable_rate_limiting: bool = True,
+        enable_audit_log: bool = True
     ) -> None:
         """
         Initialize the server with configuration options.
@@ -29,7 +32,10 @@ class AskOnlineQuestionServer:
         self.llm_client = LLMClient(
             system_prompt_path=system_prompt_path,
             model=model,
-            api_base_url=llm_api_base_url
+            api_base_url=llm_api_base_url,
+            enable_logging=enable_logging,
+            enable_rate_limiting=enable_rate_limiting,
+            enable_audit_log=enable_audit_log
         )
         self.server_name = server_name
         self.server_description = server_description

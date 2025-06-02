@@ -2,6 +2,7 @@ import pytest
 import logging
 import os
 import json
+import sys # Added import for sys
 from unittest.mock import patch, Mock
 from src.llm_wrapper_mcp_server.__main__ import main
 from src.llm_wrapper_mcp_server.llm_mcp_wrapper import LLMMCPWrapper # Moved import to top
@@ -24,14 +25,19 @@ def test_valid_model_selection(mock_main_logger_warning, tmp_path):
     # Should have no validation errors
     mock_main_logger_warning.assert_not_called()
 
+<<<<<<< HEAD
 @patch('src.llm_wrapper_mcp_server.__main__.logger.warning') # Patch the specific logger's warning method
 def test_missing_model_file(mock_main_logger_warning, tmp_path):
+=======
+def test_missing_model_file(tmp_path, capsys): # Use capsys again
+>>>>>>> feat/configurable-accounting
     """Test missing allowed models file handling"""
     missing_file = tmp_path / "missing.txt"
     
     with patch('sys.argv', [
         'server.py',
         '--allowed-models-file', str(missing_file)
+<<<<<<< HEAD
     ]), patch('sys.stdin.readline', return_value=''), pytest.raises(SystemExit) as excinfo: # Patch sys.stdin.readline
         main()
     
@@ -40,6 +46,24 @@ def test_missing_model_file(mock_main_logger_warning, tmp_path):
 
 @patch('src.llm_wrapper_mcp_server.__main__.logger.warning') # Patch the specific logger's warning method
 def test_empty_model_file(mock_main_logger_warning, tmp_path):
+=======
+    ]), patch('llm_wrapper_mcp_server.llm_mcp_wrapper.LLMMCPWrapper.run'), \
+         patch('logging.getLogger') as mock_get_logger, pytest.raises(SystemExit) as excinfo:
+        
+        # Configure the mock logger to write to sys.stderr
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
+        mock_logger.warning.side_effect = lambda msg, *args, **kwargs: print(msg % args, file=sys.stderr)
+        
+        main()
+    
+    assert excinfo.value.code == 1
+    outerr = capsys.readouterr()
+    # Check both stdout and stderr as logging might redirect
+    assert f"Allowed models file not found: {missing_file}" in (outerr.err + outerr.out)
+
+def test_empty_model_file(tmp_path, capsys): # Use capsys again
+>>>>>>> feat/configurable-accounting
     """Test empty allowed models file handling"""
     empty_file = tmp_path / "empty.txt"
     empty_file.write_text("\n\n  \n")  # Only whitespace
@@ -47,11 +71,28 @@ def test_empty_model_file(mock_main_logger_warning, tmp_path):
     with patch('sys.argv', [
         'server.py',
         '--allowed-models-file', str(empty_file)
+<<<<<<< HEAD
     ]), patch('sys.stdin.readline', return_value=''), pytest.raises(SystemExit) as excinfo: # Patch sys.stdin.readline
         main()
     
     assert excinfo.value.code == 1
     mock_main_logger_warning.assert_called_with("Allowed models file is empty - must contain at least one model name")
+=======
+    ]), patch('sys.stdin.readline', return_value=''), \
+         patch('logging.getLogger') as mock_get_logger, pytest.raises(SystemExit) as excinfo:
+        
+        # Configure the mock logger to write to sys.stderr
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
+        mock_logger.warning.side_effect = lambda msg, *args, **kwargs: print(msg % args, file=sys.stderr)
+        
+        main()
+    
+    assert excinfo.value.code == 1
+    outerr = capsys.readouterr()
+    # Check both stdout and stderr as logging might redirect
+    assert "Allowed models file is empty" in (outerr.err + outerr.out)
+>>>>>>> feat/configurable-accounting
 
 @patch('src.llm_wrapper_mcp_server.llm_client.LLMClient') # Patch LLMClient
 def test_invalid_model_formatting(MockLLMClient, mocker):
@@ -117,8 +158,12 @@ def test_invalid_model_formatting(MockLLMClient, mocker):
         mock_llm_client_instance.generate_response.assert_not_called()
         mock_llm_client_instance.generate_response.reset_mock() # Reset mock for next iteration
 
+<<<<<<< HEAD
 @patch('src.llm_wrapper_mcp_server.__main__.logger.warning') # Patch the specific logger's warning method
 def test_invalid_model_selection(mock_main_logger_warning, tmp_path):
+=======
+def test_invalid_model_selection(tmp_path, capsys): # Use capsys again
+>>>>>>> feat/configurable-accounting
     """Test invalid model not in allowed list"""
     model_file = tmp_path / "models.txt"
     model_file.write_text("allowed/model-1\nallowed/model-2")
@@ -127,8 +172,25 @@ def test_invalid_model_selection(mock_main_logger_warning, tmp_path):
         'server.py',
         '--allowed-models-file', str(model_file),
         '--model', 'invalid/model'
+<<<<<<< HEAD
     ]), patch('sys.stdin.readline', return_value=''), pytest.raises(SystemExit) as excinfo: # Patch sys.stdin.readline
         main()
     
     assert excinfo.value.code == 1
     mock_main_logger_warning.assert_called_with("Model 'invalid/model' is not in the allowed models list")
+=======
+    ]), patch('sys.stdin.readline', return_value=''), \
+         patch('logging.getLogger') as mock_get_logger, pytest.raises(SystemExit) as excinfo:
+        
+        # Configure the mock logger to write to sys.stderr
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
+        mock_logger.warning.side_effect = lambda msg, *args, **kwargs: print(msg % args, file=sys.stderr)
+        
+        main()
+    
+    assert excinfo.value.code == 1
+    outerr = capsys.readouterr()
+    # Check both stdout and stderr as logging might redirect
+    assert "Model 'invalid/model' is not in the allowed models list" in (outerr.err + outerr.out)
+>>>>>>> feat/configurable-accounting
