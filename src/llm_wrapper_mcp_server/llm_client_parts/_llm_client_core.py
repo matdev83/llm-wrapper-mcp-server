@@ -9,8 +9,6 @@ from ._accounting import LLMAccountingManager
 from ._config import load_system_prompt, get_api_base_url
 
 logger = get_logger(__name__)
-logger.setLevel(logging.NOTSET)
-logger.propagate = True
 
 class LLMClient:
     """Generic LLM API client with OpenRouter compatibility."""

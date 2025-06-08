@@ -175,6 +175,8 @@ class LLMMCPWrapper:
         try:
             client_to_use = self.llm_client
             if model_to_use and model_to_use != self.llm_client.model:
+                # TODO: Consider optimizing temporary client creation in high-throughput scenarios.
+                # This might involve a client pool or a more lightweight way to switch models.
                 temp_client = LLMClient(
                     system_prompt_path=self.system_prompt_path, model=model_to_use,
                     api_base_url=self.llm_client.base_url, api_key=self.llm_client.api_key,
@@ -292,12 +294,6 @@ class LLMMCPWrapper:
             self.send_response({"jsonrpc": "2.0", "id": current_request_id_on_error, "error": {"code": -32000, "message": "Internal error", "data": "Internal server error. Check server logs for details."}})
 
     def run(self) -> None:
-        skip_outbound_key_checks_cli = "--skip-outbound-key-leaks" in sys.argv
-        if skip_outbound_key_checks_cli:
-            logger.info("Outbound key leak checks disabled by command line parameter")
-            self.skip_outbound_key_checks = True
-            self.llm_client.skip_redaction = True
-
         logger.debug("StdioServer run method started. Sending initial capabilities.")
         self.send_response({
             "jsonrpc": "2.0", "id": None, "method": "mcp/serverReady",
