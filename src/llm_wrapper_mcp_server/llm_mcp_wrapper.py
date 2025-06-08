@@ -175,6 +175,8 @@ class LLMMCPWrapper:
         try:
             client_to_use = self.llm_client
             if model_to_use and model_to_use != self.llm_client.model:
+                # TODO: Consider optimizing temporary client creation in high-throughput scenarios.
+                # This might involve a client pool or a more lightweight way to switch models.
                 temp_client = LLMClient(
                     system_prompt_path=self.system_prompt_path, model=model_to_use,
                     api_base_url=self.llm_client.base_url, api_key=self.llm_client.api_key,
@@ -255,7 +257,7 @@ class LLMMCPWrapper:
             elif method == "tools/call": self._handle_tools_call(params, request_id)
             elif method == "resources/list": self._handle_resources_list(request_id)
             elif method == "resources/templates/list": self._handle_resources_templates_list(request_id)
-            else: self._handle_unknown_method(method, request_id)
+            else: self._handle_unknown_method(method or "", request_id)
         except Exception as e:
             logger.error("Unexpected error handling request method '%s': %s", method, str(e), extra={'request_id': request_id}, exc_info=True)
             self.send_response({
