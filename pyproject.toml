@@ -12,7 +12,6 @@ authors = [
 dependencies = [
     "requests>=2.31.0",
     "tiktoken>=0.6.0",
-    "pytest", # Keep pytest here as it's a core test dependency
     "llm_accounting",
 ]
 requires-python = ">=3.8"

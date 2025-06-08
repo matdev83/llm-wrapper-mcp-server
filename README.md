@@ -19,22 +19,26 @@ A Model Context Protocol (MCP) server wrapper designed to facilitate seamless in
 
 This project relies on the following key dependencies:
 
-### Core Dependencies:
-*   `pydantic`: Data validation and settings management using Python type hints.
-*   `pydantic-settings`: Pydantic's settings management for environment variables and configuration.
-*   `python-dotenv`: Reads key-value pairs from a `.env` file and sets them as environment variables.
-*   `requests`: An elegant and simple HTTP library for Python.
-*   `tiktoken`: A fast BPE tokeniser for use with OpenAI's models.
-*   `llm-accounting`: For robust logging, rate limiting, and audit functionalities.
+### Core Dependencies
+
+- `pydantic`: Data validation and settings management using Python type hints.
+
+- `pydantic-settings`: Pydantic's settings management for environment variables and configuration.
+- `python-dotenv`: Reads key-value pairs from a `.env` file and sets them as environment variables.
+- `requests`: An elegant and simple HTTP library for Python.
+- `tiktoken`: A fast BPE tokeniser for use with OpenAI's models.
+- `llm-accounting`: For robust logging, rate limiting, and audit functionalities.
 
 *(Note: `fastapi` and `uvicorn` have been removed as the primary server is STDIO-based. If these are used for other utilities within the project, they should be re-added with clarification.)*
 
-### Development Dependencies:
-*   `pytest`: A mature full-featured Python testing framework.
-*   `black`: An uncompromising Python code formatter.
-*   `isort`: A Python utility / library to sort imports alphabetically, and automatically separate into sections and by type.
-*   `mypy`: An optional static type checker for Python.
-*   `pytest-mock`: A pytest plugin that provides a `mocker` fixture for easier mocking.
+### Development Dependencies
+
+- `pytest`: A mature full-featured Python testing framework.
+
+- `black`: An uncompromising Python code formatter.
+- `isort`: A Python utility / library to sort imports alphabetically, and automatically separate into sections and by type.
+- `mypy`: An optional static type checker for Python.
+- `pytest-mock`: A pytest plugin that provides a `mocker` fixture for easier mocking.
 
 ## Installation
 
@@ -47,12 +51,14 @@ pip install llm-wrapper-mcp-server
 Alternatively, for local development or to install from source:
 
 1. Create and activate a virtual environment:
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
 2. Install the package:
+
 ```bash
 pip install -e .
 ```
@@ -68,7 +74,8 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 The server is configured to use OpenRouter by default. The API key is loaded from the `OPENROUTER_API_KEY` environment variable. The specific LLM model and API base URL are primarily configured via command-line arguments when running the server (see below).
 
 Default settings if not overridden by CLI arguments:
-- API Base URL for LLMClient: https://openrouter.ai/api/v1 (can be overridden by `LLM_API_BASE_URL` env var or `--llm-api-base-url` CLI arg)
+
+- API Base URL for LLMClient: <https://openrouter.ai/api/v1> (can be overridden by `LLM_API_BASE_URL` env var or `--llm-api-base-url` CLI arg)
 - Default Model for LLMClient: perplexity/llama-3.1-sonar-small-128k-online (can be overridden by `--model` CLI arg)
 
 ## Usage
@@ -79,14 +86,14 @@ Default settings if not overridden by CLI arguments:
 - The LLM Wrapper MCP Server interacts with LLM providers (e.g., OpenRouter.ai) for LLM API calls and responses.
 - The server also integrates with an LLM Accounting System for logging and auditing.
 - Main components:
-    - MCP Communication Handler
-    - LLM Client
-    - Tool Executor
-    - LLM Accounting Integration
+  - MCP Communication Handler
+  - LLM Client
+  - Tool Executor
+  - LLM Accounting Integration
 
 ### Ask Online Question MCP Server (Reference Implementation)
 
-This project includes a reference implementation of a fully functional MCP server named "Ask Online Question". 
+This project includes a reference implementation of a fully functional MCP server named "Ask Online Question".
 
 It can be directly integrated into your agentic workflows, providing cloud-based, LLM-powered online search capabilities via the MCP protocol.  
 
@@ -99,10 +106,13 @@ To run the server, execute the following command:
 ```bash
 python -m llm_wrapper_mcp_server [OPTIONS]
 ```
+
 For example:
+
 ```bash
 python -m llm_wrapper_mcp_server --model your-org/your-model-name --log-level DEBUG
 ```
+
 Run `python -m llm_wrapper_mcp_server --help` to see all available command-line options for configuring the server.
 
 This server operates as a Model Context Protocol (MCP) STDIO server, communicating via standard input and output. It does not open a network port for MCP communication.
@@ -201,7 +211,7 @@ if __name__ == "__main__":
 
 ## Development
 
-For a detailed overview of the project's directory and file structure, refer to [docs/STRUCTURE.md](docs/STRUCTURE.md). This document is useful for understanding the codebase during development.
+For a detailed overview of the project's directory and file structure, and crucial guidelines for software development agents, refer to [AGENTS.md](AGENTS.md). This document is essential for agents contributing to the codebase.
 
 ### Running Tests
 
