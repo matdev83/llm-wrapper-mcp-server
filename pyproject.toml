@@ -13,6 +13,7 @@ dependencies = [
     "requests>=2.31.0",
     "tiktoken>=0.6.0",
     "pytest", # Keep pytest here as it's a core test dependency
+    "llm_accounting",
 ]
 requires-python = ">=3.8"
 readme = "README.md"
@@ -28,6 +29,8 @@ dev = [
     "isort>=5.12.0",
     "mypy>=1.5.1",
     "pytest-mock>=3.12.0",
+    "flake8>=6.0.0",
+    "xenon>=0.9.0",
 ]
 
 [tool.black]

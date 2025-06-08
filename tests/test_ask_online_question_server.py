@@ -59,6 +59,8 @@ def run_server_process():
     env = os.environ.copy()
     if "LLM_ACCOUNTING_DB_URL" in env:
         del env["LLM_ACCOUNTING_DB_URL"]
+    # Set a valid dummy API key for the subprocess environment
+    env["OPENROUTER_API_KEY"] = "sk-dummykeyforvalidationtests1234567890"
 
     # Start the server as a subprocess
     process = subprocess.Popen(
