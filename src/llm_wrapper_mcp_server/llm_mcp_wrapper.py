@@ -257,7 +257,7 @@ class LLMMCPWrapper:
             elif method == "tools/call": self._handle_tools_call(params, request_id)
             elif method == "resources/list": self._handle_resources_list(request_id)
             elif method == "resources/templates/list": self._handle_resources_templates_list(request_id)
-            else: self._handle_unknown_method(method, request_id)
+            else: self._handle_unknown_method(method or "", request_id)
         except Exception as e:
             logger.error("Unexpected error handling request method '%s': %s", method, str(e), extra={'request_id': request_id}, exc_info=True)
             self.send_response({
@@ -294,6 +294,12 @@ class LLMMCPWrapper:
             self.send_response({"jsonrpc": "2.0", "id": current_request_id_on_error, "error": {"code": -32000, "message": "Internal error", "data": "Internal server error. Check server logs for details."}})
 
     def run(self) -> None:
+        skip_outbound_key_checks_cli = "--skip-outbound-key-leaks" in sys.argv
+        if skip_outbound_key_checks_cli:
+            logger.info("Outbound key leak checks disabled by command line parameter")
+            self.skip_outbound_key_checks = True
+            self.llm_client.skip_redaction = True
+
         logger.debug("StdioServer run method started. Sending initial capabilities.")
         self.send_response({
             "jsonrpc": "2.0", "id": None, "method": "mcp/serverReady",
