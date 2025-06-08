@@ -48,12 +48,9 @@ All agents contributing to this project are required to strictly follow these pr
 ├── config/
 │   └── prompts/
 │       └── system.txt
-├── data/
-│   └── .gitkeep # (or actual db files if they exist and are not gitignored)
+├── data/ # Data files and databbases, not to be modified by agents
 ├── docs/
-│   └── .gitkeep # (or other documentation files)
-├── logs/
-│   └── .gitkeep
+├── logs/ # Log files. Can be read if available, but should not be modified by agents
 ├── src/
 │   ├── llm_wrapper_mcp_server/
 │   │   ├── __init__.py
@@ -72,8 +69,6 @@ All agents contributing to this project are required to strictly follow these pr
 │   │   ├── __main__.py
 │   │   ├── README.md
 │   │   └── ask_online_question_server.py
-│   └── online_llm_server/ # New specialized MCP server
-│       └── online_server.py
 ├── tests/
 │   ├── conftest.py
 │   ├── test_ask_online_question_server.py
@@ -87,7 +82,6 @@ All agents contributing to this project are required to strictly follow these pr
 
 ### Directory Descriptions
 
-* `.`: The root directory of the project.
 * `config/`: Contains configuration files for the application.
   * `prompts/`: Stores system prompts used by the LLM.
 * `data/`: Intended for storing any data files generated or used by the application, such as SQLite databases for `llm-accounting`.
@@ -96,7 +90,6 @@ All agents contributing to this project are required to strictly follow these pr
 * `src/`: Contains the source code of the application.
   * `llm_wrapper_mcp_server/`: The main Python package for the LLM wrapper MCP server.
   * `ask_online_question_mcp_server/`: A reference implementation of a custom MCP server.
-  * `online_llm_server/`: A specialized MCP server for online LLM queries, providing a `search_online` tool.
 * `tests/`: Contains unit and integration tests for the project.
   * `llm_client_parts/`: Contains modularized components of the `llm_client`.
 
@@ -118,7 +111,6 @@ All agents contributing to this project are required to strictly follow these pr
 * `src/llm_wrapper_mcp_server/llm_client_parts/_config.py`: Manages LLM client configuration.
 * `src/llm_wrapper_mcp_server/llm_client_parts/_llm_client_core.py`: Core logic for interacting with LLM APIs.
 * `src/ask_online_question_mcp_server/...`: Files for the reference MCP server implementation.
-* `src/online_llm_server/online_server.py`: The main script for the specialized online LLM MCP server.
 * `tests/conftest.py`: Pytest file for test configuration and fixtures.
 * `tests/test_ask_online_question_server.py`: Tests for the `ask_online_question_mcp_server`.
 * `tests/test_integration_openrouter.py`: Integration tests for OpenRouter API.

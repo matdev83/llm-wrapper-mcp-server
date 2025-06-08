@@ -2,8 +2,6 @@
 
 > "Allow any MCP-capable LLM agent to communicate with or delegate tasks to any other LLM available through the OpenRouter.ai API."
 
-[GitHub Repository](https://github.com/matdev83/llm-wrapper-mcp-server)
-
 A Model Context Protocol (MCP) server wrapper designed to facilitate seamless interaction with various Large Language Models (LLMs) through a standardized interface. This project enables developers to integrate LLM capabilities into their applications by providing a robust and flexible STDIO-based server that handles LLM calls, tool execution, and result processing.
 
 ## Features
@@ -22,14 +20,11 @@ This project relies on the following key dependencies:
 ### Core Dependencies
 
 - `pydantic`: Data validation and settings management using Python type hints.
-
 - `pydantic-settings`: Pydantic's settings management for environment variables and configuration.
 - `python-dotenv`: Reads key-value pairs from a `.env` file and sets them as environment variables.
 - `requests`: An elegant and simple HTTP library for Python.
 - `tiktoken`: A fast BPE tokeniser for use with OpenAI's models.
 - `llm-accounting`: For robust logging, rate limiting, and audit functionalities.
-
-*(Note: `fastapi` and `uvicorn` have been removed as the primary server is STDIO-based. If these are used for other utilities within the project, they should be re-added with clarification.)*
 
 ### Development Dependencies
 
@@ -90,14 +85,6 @@ Default settings if not overridden by CLI arguments:
   - LLM Client
   - Tool Executor
   - LLM Accounting Integration
-
-### Ask Online Question MCP Server (Reference Implementation)
-
-This project includes a reference implementation of a fully functional MCP server named "Ask Online Question".
-
-It can be directly integrated into your agentic workflows, providing cloud-based, LLM-powered online search capabilities via the MCP protocol.  
-
-This server demonstrates how to build a specialized MCP server on top of the `llm-wrapper-mcp-server` foundation. For detailed information on its features, usage, and how to integrate it with your agent, please refer to its dedicated README: [src/ask_online_question_mcp_server/README.md](src/ask_online_question_mcp_server/README.md).
 
 ### Running the Server
 
