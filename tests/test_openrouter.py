@@ -2,7 +2,7 @@ import os
 import pytest
 import logging
 from unittest.mock import patch, MagicMock, call
-from src.llm_wrapper_mcp_server.llm_client import LLMClient
+from src.llm_wrapper_mcp_server.llm_client_parts._llm_client_core import LLMClient # Updated import
 from src.llm_wrapper_mcp_server.llm_mcp_wrapper import LLMMCPWrapper
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def test_api_key_redaction_enabled(mock_post, unique_db_paths, redaction_setup):
     test_api_key, mock_response_data = redaction_setup
 
     # Patch LLMClient's __init__ to inject unique DB paths and handle skip_outbound_key_checks
-    with patch('src.llm_wrapper_mcp_server.llm_client.LLMClient.__init__', autospec=True) as mock_llm_client_init:
+    with patch('src.llm_wrapper_mcp_server.llm_client_parts._llm_client_core.LLMClient.__init__', autospec=True) as mock_llm_client_init: # Updated import
         def mock_init_side_effect(self_client, *args, **kwargs):
             original_init = LLMClient.__init__
             # Extract skip_outbound_key_checks from kwargs if present, default to False
@@ -69,7 +69,7 @@ def test_api_key_redaction_disabled(mock_post, unique_db_paths, redaction_setup)
     mock_post.return_value = mock_response
 
     # Patch LLMClient's __init__ to prevent API key validation/real calls AND inject unique DB paths
-    with patch('src.llm_wrapper_mcp_server.llm_client.LLMClient.__init__', autospec=True) as mock_llm_client_init:
+    with patch('src.llm_wrapper_mcp_server.llm_client_parts._llm_client_core.LLMClient.__init__', autospec=True) as mock_llm_client_init: # Updated import
         # Configure the mock __init__ to call the original __init__ but bypass API key validation
         def mock_init_side_effect(self_client, *args, **kwargs):
             original_init = LLMClient.__init__

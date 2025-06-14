@@ -1,7 +1,9 @@
 import logging
 
+
 class ApiKeyFilter(logging.Filter):
     """Filter to redact API keys from log messages"""
+
     def __init__(self, api_key: str):
         super().__init__()
         self.api_key = api_key

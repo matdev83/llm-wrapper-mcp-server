@@ -1,6 +1,11 @@
-from .ask_online_question_server import AskOnlineQuestionServer
 import argparse
 import os
+import sys
+
+# Ensure sibling packages under src/ are importable when run without installation
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from .ask_online_question_server import AskOnlineQuestionServer
 
 def main():
     parser = argparse.ArgumentParser(description="Ask Online Question MCP Server")
