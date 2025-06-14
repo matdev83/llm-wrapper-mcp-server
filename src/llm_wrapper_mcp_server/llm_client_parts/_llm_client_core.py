@@ -236,3 +236,8 @@ class LLMClient:
                 self.api_key, "(API key redacted due to security reasons)"
             )
         return content
+
+    def close(self) -> None:
+        """Close any resources held by the accounting manager."""
+        if self.accounting_manager:
+            self.accounting_manager.close()
