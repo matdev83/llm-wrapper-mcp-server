@@ -4,7 +4,7 @@ import os
 import sys
 from typing import Any, Dict, Optional
 
-from llm_wrapper_mcp_server.llm_client import LLMClient
+from llm_wrapper_mcp_server.llm_client_parts._llm_client_core import LLMClient # Updated import
 from llm_wrapper_mcp_server.logger import get_logger
 
 logger = get_logger(__name__)
@@ -228,7 +228,9 @@ class AskOnlineQuestionServer:
         finally:
             logger.debug("Ensuring LLMClient resources are closed.")
             if hasattr(self, 'llm_client') and self.llm_client:
-                self.llm_client.close()
+                # This part will cause an error since close() was removed
+                # self.llm_client.close()
+                pass # Temporarily pass until deciding on close behavior
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ask Online Question MCP Server")

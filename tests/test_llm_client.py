@@ -3,7 +3,7 @@ import pytest
 import requests
 import logging
 from unittest.mock import patch, Mock, MagicMock, call
-from src.llm_wrapper_mcp_server.llm_client import LLMClient
+from src.llm_wrapper_mcp_server.llm_client_parts._llm_client_core import LLMClient # Updated import
 from src.llm_wrapper_mcp_server.llm_client_parts._api_key_filter import ApiKeyFilter
 from src.llm_wrapper_mcp_server.llm_client_parts._llm_client_core import logger # Import logger from the core module
 

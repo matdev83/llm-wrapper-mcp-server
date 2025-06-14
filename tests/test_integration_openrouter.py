@@ -12,7 +12,7 @@ except ImportError:
     requests = None
     exceptions = None # Ensure exceptions is None if requests is None
 
-from src.llm_wrapper_mcp_server.llm_client import LLMClient
+from src.llm_wrapper_mcp_server.llm_client_parts._llm_client_core import LLMClient # Updated import
 from src.llm_wrapper_mcp_server.llm_mcp_wrapper import LLMMCPWrapper
 
 # Provided API Key and Model for testing

@@ -10,19 +10,24 @@ logger = get_logger(__name__)
 logger.setLevel(logging.NOTSET)
 logger.propagate = True
 
+
 class LLMAccountingManager:
     def __init__(self, enable_logging: bool, enable_audit_log: bool):
         os.makedirs("data", exist_ok=True)
 
         self.llm_tracker = None
         if enable_logging:
-            self.llm_tracker = LLMAccounting(backend=SQLiteBackend(db_path="data/accounting.sqlite"))
+            self.llm_tracker = LLMAccounting(
+                backend=SQLiteBackend(db_path="data/accounting.sqlite")
+            )
         else:
             logger.info("LLM accounting is disabled.")
 
         self.audit_logger = None
         if enable_audit_log:
-            self.audit_logger = AuditLogger(backend=SQLiteBackend(db_path="data/audit.sqlite"))
+            self.audit_logger = AuditLogger(
+                backend=SQLiteBackend(db_path="data/audit.sqlite")
+            )
         else:
             logger.info("Audit logging is disabled.")
 
