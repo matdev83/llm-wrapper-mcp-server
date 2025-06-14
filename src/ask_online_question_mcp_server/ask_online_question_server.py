@@ -228,9 +228,10 @@ class AskOnlineQuestionServer:
         finally:
             logger.debug("Ensuring LLMClient resources are closed.")
             if hasattr(self, 'llm_client') and self.llm_client:
-                # This part will cause an error since close() was removed
-                # self.llm_client.close()
-                pass # Temporarily pass until deciding on close behavior
+                try:
+                    self.llm_client.close()
+                except Exception as e:
+                    logger.warning(f"Error closing LLMClient: {e}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ask Online Question MCP Server")
